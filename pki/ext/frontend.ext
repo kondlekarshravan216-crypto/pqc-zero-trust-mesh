@@ -1,0 +1,7 @@
+# Frontend identity: acts only as an mTLS CLIENT toward the backend
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = clientAuth
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid
+subjectAltName         = URI:spiffe://pqzt.local/ns/demo/sa/frontend, DNS:frontend, DNS:frontend.demo.svc.cluster.local

@@ -1,0 +1,7 @@
+# Backend identity: acts only as an mTLS SERVER
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = serverAuth
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid
+subjectAltName         = URI:spiffe://pqzt.local/ns/demo/sa/backend, DNS:backend, DNS:backend.demo.svc.cluster.local

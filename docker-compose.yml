@@ -1,0 +1,56 @@
+
+# Before first start, generate the CA and service certificates.
+# Certificates are stored in the secure WSL Linux filesystem.
+# Configure LOCAL_UID and LOCAL_GID so Envoy can read the private keys.
+
+services:
+  backend-app:
+    image: python:3.12-alpine
+    command: ["python", "/app/app.py"]
+    volumes:
+      - "./backend/app.py:/app/app.py:ro"
+    networks:
+      - mesh
+
+  backend-envoy:
+    image: envoyproxy/envoy:v1.39.3
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    command:
+      - "-c"
+      - "/etc/envoy/envoy.yaml"
+      - "--log-level"
+      - "info"
+    volumes:
+      - "./envoy/backend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
+      - "/home/agnes/pki-mtls-secure/backend/backend.crt:/etc/pqzt/certs/backend.crt:ro"
+      - "/home/agnes/pki-mtls-secure/backend/backend.key:/etc/pqzt/certs/backend.key:ro"
+      - "/home/agnes/pki-mtls-secure/backend/ca.crt:/etc/pqzt/certs/ca.crt:ro"
+    ports:
+      - "127.0.0.1:18443:8443"
+    depends_on:
+      - backend-app
+    networks:
+      - mesh
+
+  frontend-envoy:
+    image: envoyproxy/envoy:v1.39.3
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    command:
+      - "-c"
+      - "/etc/envoy/envoy.yaml"
+      - "--log-level"
+      - "info"
+    volumes:
+      - "./envoy/frontend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
+      - "/home/agnes/pki-mtls-secure/frontend/frontend.crt:/etc/pqzt/certs/frontend.crt:ro"
+      - "/home/agnes/pki-mtls-secure/frontend/frontend.key:/etc/pqzt/certs/frontend.key:ro"
+      - "/home/agnes/pki-mtls-secure/frontend/ca.crt:/etc/pqzt/certs/ca.crt:ro"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - backend-envoy
+    networks:
+      - mesh
+
+networks:
+  mesh: {}

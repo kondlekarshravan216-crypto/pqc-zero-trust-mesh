@@ -1,0 +1,62 @@
+# Backend-side Envoy: terminates mTLS, REQUIRES a client cert signed by the mesh CA whose
+# SAN is exactly the frontend identity, then forwards plaintext to the local backend app.
+# STATUS: written to Envoy v1.31 API; NOT executed/validated in the authoring environment (no Envoy available).
+admin:
+  address: { socket_address: { address: 127.0.0.1, port_value: 9901 } }   # loopback only
+static_resources:
+  listeners:
+  - name: backend_mtls_listener
+    address: { socket_address: { address: 0.0.0.0, port_value: 8443 } }
+    filter_chains:
+    - transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          require_client_certificate: true            # => mutual TLS
+          common_tls_context:
+            tls_params:
+              tls_minimum_protocol_version: TLSv1_3
+              tls_maximum_protocol_version: TLSv1_3
+              # Classical groups only. PQC/hybrid group (e.g. X25519MLKEM768) NOT enabled/verified - see docs/PQC_INTEGRATION.md
+              ecdh_curves: [X25519MLKEM768, X25519, P-256]
+            tls_certificates:
+            - certificate_chain: { filename: /etc/pqzt/certs/backend.crt }
+              private_key:       { filename: /etc/pqzt/certs/backend.key }
+            validation_context:
+              trusted_ca: { filename: /etc/pqzt/certs/ca.crt }
+              match_typed_subject_alt_names:          # authorization: only the frontend identity
+              - san_type: URI
+                matcher: { exact: "spiffe://pqzt.local/ns/demo/sa/frontend" }
+      filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: backend_ingress
+          access_log:
+          - name: envoy.access_loggers.stdout
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+              log_format:
+                text_format_source:
+                  inline_string: "[%START_TIME%] \"%REQ(:METHOD)% %REQ(:PATH)%\" %RESPONSE_CODE% flags=%RESPONSE_FLAGS% tls=%DOWNSTREAM_TLS_VERSION% peer_uri_san=%DOWNSTREAM_PEER_URI_SAN%\n"
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: backend
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/" }
+                route: { cluster: backend_app }
+          http_filters:
+          - name: envoy.filters.http.router
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+  - name: backend_app
+    type: STRICT_DNS
+    connect_timeout: 2s
+    load_assignment:
+      cluster_name: backend_app
+      endpoints:
+      - lb_endpoints:
+        - endpoint: { address: { socket_address: { address: backend-app, port_value: 8080 } } }
