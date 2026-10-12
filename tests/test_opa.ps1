@@ -104,19 +104,35 @@ Run-OpaEvalTest `
     -Query "data.mesh.authz.allow" `
     -ExpectedValue $false
 
-Write-Host "`n--- Part 3: Identity & Telemetry Policy Tests (opa/inputs/*.json) ---" -ForegroundColor Cyan
+Write-Host "`n--- Part 3: Identity Tests (opa/inputs/*.json) ---" -ForegroundColor Cyan
 
 Run-OpaEvalTest `
-    -TestName "Identity Test 1: Verified SPIFFE Frontend SVID [ALLOW]" `
+    -TestName "Identity Test 1: Simple Verified Identity [ALLOW]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/allowed.json" `
     -Query "data.authz.allow" `
     -ExpectedValue $true
 
 Run-OpaEvalTest `
-    -TestName "Identity Test 2: Unapproved SPIFFE SVID [DENY]" `
+    -TestName "Identity Test 2: Simple Unapproved Identity [DENY]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/denied.json" `
+    -Query "data.authz.allow" `
+    -ExpectedValue $false
+
+Write-Host "`n--- Part 4: SPIFFE SVID Request Envelope Tests (opa/tests/*.json) ---" -ForegroundColor Cyan
+
+Run-OpaEvalTest `
+    -TestName "SPIFFE SVID Test 1: Full SVID URI Allowed [ALLOW]" `
+    -PolicyPath "opa/policies/authz.rego" `
+    -InputPath "opa/tests/input_allowed.json" `
+    -Query "data.authz.allow" `
+    -ExpectedValue $true
+
+Run-OpaEvalTest `
+    -TestName "SPIFFE SVID Test 2: Rogue SVID URI Denied [DENY]" `
+    -PolicyPath "opa/policies/authz.rego" `
+    -InputPath "opa/tests/input_denied.json" `
     -Query "data.authz.allow" `
     -ExpectedValue $false
 

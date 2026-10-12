@@ -61,15 +61,19 @@ PASS: 8/8
 [TEST 3] Contract Test 3: Frontend -> Database [DENY]    => PASS (Output: False)
 [TEST 4] Contract Test 4: Unknown -> Backend [DENY]     => PASS (Output: False)
 
---- Part 3: Identity & Telemetry Policy Tests (opa/inputs/*.json) ---
-[TEST 5] Identity Test 1: Verified SPIFFE Frontend SVID => PASS (Output: True)
-[TEST 6] Identity Test 2: Unapproved SPIFFE SVID        => PASS (Output: False)
+--- Part 3: Identity Tests (opa/inputs/*.json) ---
+[TEST 5] Identity Test 1: Simple Verified Identity [ALLOW]  => PASS (Output: True)
+[TEST 6] Identity Test 2: Simple Unapproved Identity [DENY] => PASS (Output: False)
+
+--- Part 4: SPIFFE SVID Request Envelope Tests (opa/tests/*.json) ---
+[TEST 7] SPIFFE SVID Test 1: Full SVID URI Allowed [ALLOW]  => PASS (Output: True)
+[TEST 8] SPIFFE SVID Test 2: Rogue SVID URI Denied [DENY]   => PASS (Output: False)
 
 ==========================================================
                    SUMMARY OF RESULTS                     
 ==========================================================
-Total Evaluation Tests: 6
-Passed:                 6
+Total Evaluation Tests: 8
+Passed:                 8
 Failed:                 0
 [+] All tests PASSED successfully!
 ```
@@ -78,10 +82,11 @@ Failed:                 0
 
 ## 4. Checklist
 
-- [x] All 4 OPA contract tests passing
+- [x] All OPA contract and identity tests passing (8/8 evaluation tests)
 - [x] Unit tests passing (8/8)
 - [x] Automated test scripts created and tested (`tests/test_opa.ps1`, `tests/test_opa.sh`)
-- [x] Vault server configuration and least-privilege policy reviewed and documented
+- [x] Vault server configuration and least-privilege policy reviewed and documented (`vault/README.md`)
+- [x] Key & Certificate rotation and Envoy/Kubernetes integration plan documented (`docs/integration_and_rotation_plan.md`)
 - [x] No secrets or credentials committed
 - [x] Team status updated for Day 2
 - [x] Clean commit history on `feature/opa-vault`

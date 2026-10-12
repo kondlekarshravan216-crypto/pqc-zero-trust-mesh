@@ -59,9 +59,14 @@ run_opa_eval_test "Contract Test 3: Frontend -> Database [DENY]" "opa/policies/a
 run_opa_eval_test "Contract Test 4: Unknown -> Backend [DENY]" "opa/policies/authorization.rego" "tests/opa/deny-unknown-backend.json" "data.mesh.authz.allow" "false"
 
 echo ""
-echo "--- Part 3: Identity & Telemetry Policy Tests (opa/inputs/*.json) ---"
-run_opa_eval_test "Identity Test 1: Verified SPIFFE Frontend SVID [ALLOW]" "opa/policies/authz.rego" "opa/inputs/allowed.json" "data.authz.allow" "true"
-run_opa_eval_test "Identity Test 2: Unapproved SPIFFE SVID [DENY]" "opa/policies/authz.rego" "opa/inputs/denied.json" "data.authz.allow" "false"
+echo "--- Part 3: Identity Tests (opa/inputs/*.json) ---"
+run_opa_eval_test "Identity Test 1: Simple Verified Identity [ALLOW]" "opa/policies/authz.rego" "opa/inputs/allowed.json" "data.authz.allow" "true"
+run_opa_eval_test "Identity Test 2: Simple Unapproved Identity [DENY]" "opa/policies/authz.rego" "opa/inputs/denied.json" "data.authz.allow" "false"
+
+echo ""
+echo "--- Part 4: SPIFFE SVID Request Envelope Tests (opa/tests/*.json) ---"
+run_opa_eval_test "SPIFFE SVID Test 1: Full SVID URI Allowed [ALLOW]" "opa/policies/authz.rego" "opa/tests/input_allowed.json" "data.authz.allow" "true"
+run_opa_eval_test "SPIFFE SVID Test 2: Rogue SVID URI Denied [DENY]" "opa/policies/authz.rego" "opa/tests/input_denied.json" "data.authz.allow" "false"
 
 echo ""
 echo "=========================================================="

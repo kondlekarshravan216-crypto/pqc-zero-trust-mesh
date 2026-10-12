@@ -121,10 +121,23 @@ vault kv get secret/mesh/database
 
 ---
 
-## 4. Security & Compliance Checklist
+## 4. Key & Certificate Rotation Workflow
+
+Vault functions as the PKI authority and secret distributor in tandem with Envoy proxies:
+1. **Dynamic PKI Engine (`pki_mesh`)**: Generates short-lived X.509 leaf certificates with SPIFFE SAN URIs (`max_ttl = 24h`, `ttl = 12h`).
+2. **Sidecar Distribution**: In Kubernetes, a lightweight **Vault Agent** or **SPIRE Agent** authenticates via projected ServiceAccount tokens and fetches renewed certificates at 66% TTL.
+3. **Envoy SDS Zero-Downtime Hot Reload**: Certificates are streamed to Envoy via the **Secret Discovery Service (SDS)** API over Unix Domain Sockets, triggering an atomic in-memory reload without dropping in-flight connections or restarting pods.
+4. **Emergency Revocation**: Compromised certificates are revoked directly in Vault (`vault write pki_mesh/revoke ...`), triggering immediate CRL updates.
+
+For full architectural diagrams, sequence flows, and Envoy `ext_authz` integration details, see [docs/integration_and_rotation_plan.md](../docs/integration_and_rotation_plan.md).
+
+---
+
+## 5. Security & Compliance Checklist
 
 - [x] **No Secrets Committed**: Verified repository contains zero tokens, unseal keys, private keys, or passwords.
 - [x] **Ignored Storage**: `./vault/data/` is strictly excluded via `.gitignore`.
 - [x] **Dev Configuration Scoped**: Bound to `127.0.0.1` to prevent unauthorized cross-network access.
 - [x] **Policy Immutability**: `delete` and `destroy` capabilities excluded from mesh workload policy.
+- [x] **Key/Certificate Rotation Plan Documented**: Detailed in [docs/integration_and_rotation_plan.md](../docs/integration_and_rotation_plan.md).
 - [x] **Roadmap Aligned**: Aligns with Day 2 architecture contract and OPA integration specifications.
