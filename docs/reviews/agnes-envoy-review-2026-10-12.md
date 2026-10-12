@@ -50,3 +50,32 @@ The PKI scripts and OpenSSL-based negative tests show useful
 foundational work. Compose syntax is valid, but runtime Envoy
 integration and hybrid PQC remain unverified. Further evidence
 is required before merging the feature as a completed integration.
+
+## Follow-up runtime verification — 2026-10-12
+
+The reviewer ran the isolated Compose deployment using temporary test
+certificates and temporary key files. These results apply to that test
+environment, not to a production deployment.
+
+- Compose configuration validation passed.
+- All three test services (backend application, backend Envoy, frontend
+  Envoy) started successfully.
+- A request through the frontend Envoy returned HTTP 200 with the backend
+  response `{"service":"backend","status":"ok"}`.
+- Backend Envoy logged the frontend peer URI SAN:
+  `spiffe://pqzt.local/ns/demo/sa/frontend`.
+- A direct request without a client certificate was rejected with a TLS
+  `certificate required` alert.
+- A direct request using a self-signed, untrusted client certificate was
+  rejected with a TLS `unknown ca` alert (curl exit code 56).
+- A direct curl-to-backend TLS handshake reported
+  `X25519MLKEM768`. This establishes hybrid key exchange for that direct
+  test connection only; it does not establish which group was negotiated
+  on the frontend-Envoy-to-backend-Envoy connection.
+- The test certificates use classical ECDSA P-256 signatures. PQC certificate
+  signatures were not demonstrated.
+
+Scope limitations: this was an isolated test deployment with temporary
+certificates and configuration copies. It does not establish that the
+hybrid handshake was used on every mesh hop, nor does it establish
+production readiness. Preserve these limitations in project reporting.
