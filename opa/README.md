@@ -8,22 +8,19 @@ This module provides fine-grained, decentralized policy enforcement for the **Po
 
 ### Tool Status
 - **Checked Command**: `opa version`
-- **Current Status**: **Missing / Not installed** (`The term 'opa' is not recognized as the name of a cmdlet, function, script file, or operable program`).
-- Files have been prepared and structured for immediate execution once installation is approved.
+- **Current Status**: **Installed & Verified (OPA v1.21.1, Rego v1 default)**.
+- All unit tests and contract integration tests execute cleanly in native environment.
 
 ### Installation Instructions
 
-#### Option A: Windows (PowerShell / Package Managers)
+#### Option A: Windows (PowerShell / Direct Binary)
 ```powershell
 # Via Winget
 winget install OpenPolicyAgent.OPA
 
-# Via Chocolatey
-choco install opa
-
 # Or download official binary directly
 Invoke-WebRequest -Uri "https://openpolicyagent.org/downloads/latest/opa_windows_amd64.exe" -OutFile "$env:USERPROFILE\bin\opa.exe"
-# Ensure $env:USERPROFILE\bin is in your PATH
+# Ensure directory is in your PATH
 ```
 
 #### Option B: Linux / macOS / WSL
@@ -43,143 +40,110 @@ docker run --rm -v ${PWD}:/workspace -w /workspace openpolicyagent/opa:latest te
 
 ---
 
-## 2. Policy Explanation (`opa/policies/authz.rego`)
+## 2. Policy Explanation
 
-The authorization policy implements Zero-Trust Network Architecture (ZTNA) principles:
+### 2.1 Identity Authorization Policy (`opa/policies/authz.rego`)
+
+The authorization policy implements Zero-Trust Network Architecture (ZTNA) principles in Rego v1:
 
 ```rego
 package authz
 
+import rego.v1
+
 # 1. Deny-by-default: Without explicit allow conditions, all traffic is rejected
-default allow = false
+default allow := false
 
 # 2. Approved Identities: Trusted SPIFFE IDs and workload identifiers
-approved_frontend_identities = {
+approved_frontend_identities := {
     "frontend-service",
-    "spiffe://cluster.local/ns/mesh/sa/frontend-service"
+    "spiffe://cluster.local/ns/mesh/sa/frontend-service",
 }
 
 # 3. Authorization Rule: Caller must be an approved frontend identity targeting backend
-allow {
+allow if {
     approved_frontend_identities[input.identity]
     input.destination == "backend"
 }
 
 # 4. Audit Metadata: Reasons recorded for observability & telemetry
-reason = "Access granted: approved frontend identity" {
+reason := "Access granted: approved frontend identity" if {
     allow
 }
 
-reason = "Access denied: unapproved identity or unauthorized destination" {
+reason := "Access denied: unapproved identity or unauthorized destination" if {
     not allow
 }
 ```
 
-### Policy Characteristics
-- **Zero-Trust Baseline (`default allow = false`)**: Closed by default. Any unhandled case or missing attribute results in denial.
-- **Identity Enforcement**: Verifies the caller against cryptographic mesh credentials (SPIFFE SVID established during the post-quantum hybrid mTLS handshake).
-- **Segmentation**: Even valid identities cannot reach arbitrary services; communication is restricted specifically to authorized destinations (e.g., `backend`).
+### 2.2 Integration Contract Policy (`opa/policies/authorization.rego`)
+
+Implements the inter-service authorization contract defined in `docs/architecture/opa-integration-contract.md`:
+
+```rego
+package mesh.authz
+
+import rego.v1
+
+default allow := false
+
+allow if {
+    input.source == "frontend"
+    input.destination == "backend"
+    input.action == "read"
+}
+
+allow if {
+    input.source == "backend"
+    input.destination == "database"
+    input.action == "read"
+}
+```
 
 ---
 
-## 3. Test Inputs & Test Execution
+## 3. Test Suite & Automated Execution
 
-### Test Files Created
-- **Allowed Request**: [`opa/inputs/allowed.json`](inputs/allowed.json)
-  ```json
-  {
-    "identity": "spiffe://cluster.local/ns/mesh/sa/frontend-service",
-    "destination": "backend",
-    "action": "GET",
-    "path": "/api/v1/metrics",
-    "timestamp": "2026-10-12T13:00:00Z"
-  }
+### 3.1 Automated Test Scripts (Day 2)
+
+An automated test suite is provided to execute all unit tests and contract evaluations in one command:
+
+- **PowerShell (Windows)**:
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tests/test_opa.ps1
   ```
-- **Denied Request**: [`opa/inputs/denied.json`](inputs/denied.json)
-  ```json
-  {
-    "identity": "spiffe://cluster.local/ns/mesh/sa/unapproved-service",
-    "destination": "backend",
-    "action": "POST",
-    "path": "/api/v1/admin/shutdown",
-    "timestamp": "2026-10-12T13:05:00Z"
-  }
+- **Bash (Linux / CI)**:
+  ```bash
+  chmod +x tests/test_opa.sh
+  ./tests/test_opa.sh
   ```
-- **Unit Test Suite**: [`opa/policies/authz_test.rego`](policies/authz_test.rego)
 
-### Execution Commands (Run After Installing OPA)
-
-#### 1. Evaluate Allowed Request:
-```bash
-opa eval --data opa/policies/authz.rego --input opa/inputs/allowed.json "data.authz"
-```
-**Expected Output**:
-```json
-{
-  "result": [
-    {
-      "expressions": [
-        {
-          "value": {
-            "allow": true,
-            "approved_frontend_identities": [
-              "frontend-service",
-              "spiffe://cluster.local/ns/mesh/sa/frontend-service"
-            ],
-            "reason": "Access granted: approved frontend identity"
-          },
-          "text": "data.authz",
-          "location": { "row": 1, "col": 1 }
-        }
-      ]
-    }
-  ]
-}
-```
-*Decision*: **`allow: true`**
-
-#### 2. Evaluate Denied Request:
-```bash
-opa eval --data opa/policies/authz.rego --input opa/inputs/denied.json "data.authz"
-```
-**Expected Output**:
-```json
-{
-  "result": [
-    {
-      "expressions": [
-        {
-          "value": {
-            "allow": false,
-            "approved_frontend_identities": [
-              "frontend-service",
-              "spiffe://cluster.local/ns/mesh/sa/frontend-service"
-            ],
-            "reason": "Access denied: unapproved identity or unauthorized destination"
-          },
-          "text": "data.authz",
-          "location": { "row": 1, "col": 1 }
-        }
-      ]
-    }
-  ]
-}
-```
-*Decision*: **`allow: false`**
-
-#### 3. Run Policy Unit Tests:
+### 3.2 Running Policy Unit Tests
 ```bash
 opa test opa/policies/ -v
 ```
-**Expected Output**:
+**Output**:
 ```text
-data.authz.test_allow_approved_identity: PASS (0.5ms)
-data.authz.test_deny_unapproved_identity: PASS (0.2ms)
-data.authz.test_deny_unauthorized_destination: PASS (0.2ms)
-data.authz.test_deny_empty_input: PASS (0.1ms)
+data.mesh.authz.test_allow_frontend_backend: PASS
+data.mesh.authz.test_allow_backend_database: PASS
+data.mesh.authz.test_deny_frontend_database: PASS
+data.mesh.authz.test_deny_unknown_backend: PASS
+data.authz.test_allow_approved_identity: PASS
+data.authz.test_deny_unapproved_identity: PASS
+data.authz.test_deny_unauthorized_destination: PASS
+data.authz.test_deny_empty_input: PASS
 --------------------------------------------------------------------------------
-PASS: 4/4
+PASS: 8/8
 ```
+
+### 3.3 Four Contract Evaluation Tests (`tests/opa/*.json`)
+
+| Test File | Source | Destination | Action | Expected | Result |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `tests/opa/allow-frontend-backend.json` | frontend | backend | read | `true` | **PASS** |
+| `tests/opa/allow-backend-database.json` | backend | database | read | `true` | **PASS** |
+| `tests/opa/deny-frontend-database.json` | frontend | database | read | `false` | **PASS** |
+| `tests/opa/deny-unknown-backend.json` | unknown | backend | read | `false` | **PASS** |
 
 ---
 

@@ -1,25 +1,27 @@
 package authz
 
+import rego.v1
+
 # Default to denying all requests (Zero-Trust Principle: deny-by-default)
-default allow = false
+default allow := false
 
 # Approved frontend service identities permitted to access backend services
-approved_frontend_identities = {
+approved_frontend_identities := {
     "frontend-service",
-    "spiffe://cluster.local/ns/mesh/sa/frontend-service"
+    "spiffe://cluster.local/ns/mesh/sa/frontend-service",
 }
 
 # Allow rule: verified frontend identity accessing backend service
-allow {
+allow if {
     approved_frontend_identities[input.identity]
     input.destination == "backend"
 }
 
 # Decision reason metadata for audit logging and dashboard telemetry
-reason = "Access granted: approved frontend identity" {
+reason := "Access granted: approved frontend identity" if {
     allow
 }
 
-reason = "Access denied: unapproved identity or unauthorized destination" {
+reason := "Access denied: unapproved identity or unauthorized destination" if {
     not allow
 }
