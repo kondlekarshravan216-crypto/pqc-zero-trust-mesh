@@ -1,0 +1,7 @@
+{
+  "identity": "spiffe://cluster.local/ns/mesh/sa/unapproved-service",
+  "destination": "backend",
+  "action": "POST",
+  "path": "/api/v1/admin/shutdown",
+  "timestamp": "2026-10-12T13:05:00Z"
+}

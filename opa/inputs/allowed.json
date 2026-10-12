@@ -1,0 +1,7 @@
+{
+  "identity": "spiffe://cluster.local/ns/mesh/sa/frontend-service",
+  "destination": "backend",
+  "action": "GET",
+  "path": "/api/v1/metrics",
+  "timestamp": "2026-10-12T13:00:00Z"
+}
