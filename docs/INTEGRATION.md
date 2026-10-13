@@ -27,3 +27,14 @@ Open items before any PQC claim:
 4. Decide policy: hybrid-only vs. fallback to X25519 (fallback permits downgrade).
 5. PQ signatures (ML-DSA) for certificates are a separate, larger dependency; not scoped here.
 Interfaces for PQC work: `envoy/*.yaml` → `tls_params.ecdh_curves`; test harness `tests/run-tests.sh` (Part D probe prints actual support).
+
+## Final mTLS Verification — 2026-10-13
+
+The recorded end-to-end tests validate both Envoy configurations,
+frontend routing, valid client authentication, and rejection of missing,
+unsuitable, and untrusted-CA client certificates. Detailed results are
+in `tests/results-20261013-final.md`.
+
+Hybrid post-quantum key exchange and ML-DSA certificate integration
+through the running Envoy services remain unverified. Do not claim PQC
+integration is complete without direct handshake and certificate evidence.
