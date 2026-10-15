@@ -4,12 +4,22 @@
 *.key
 *.pem
 *.crt
+*.csr
+*.p12
 *.pfx
+*.jks
+*.srl
 *.token
 *secret*
 *credential*
 vault-token
 vault-creds.json
+
+# Private key material and generated PKI output must never be committed
+pki/out/
+pki/out-clean/
+tests/work/
+tests/.work-run.*/
 
 # System & OS
 .DS_Store
@@ -25,3 +35,4 @@ Thumbs.db
 *.log
 tmp/
 scratch/
+
