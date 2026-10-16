@@ -1,0 +1,14 @@
+# Private key material and generated PKI output must never be committed
+pki/out/
+tests/work/
+*.key
+*.srl
+
+# Additional generated credentials and test artifacts
+*.csr
+*.p12
+*.pfx
+tests/.work-run.*/
+tests/work/
+
+pki/out-clean/
