@@ -38,3 +38,20 @@ in `tests/results-20261013-final.md`.
 Hybrid post-quantum key exchange and ML-DSA certificate integration
 through the running Envoy services remain unverified. Do not claim PQC
 integration is complete without direct handshake and certificate evidence.
+
+## Runtime verification update — 2026-10-16
+
+| Check | Result | Evidence boundary |
+|---|---|---|
+| Compose configuration | Previously reported PASS | Re-run validation before release. |
+| Both Envoy configurations | Previously reported standalone validation PASS | Syntax/schema validation does not prove upstream negotiation. |
+| Frontend request through local stack | Previously reported HTTP 200 | Re-run against the current runtime. |
+| Trusted client certificate | Previously reported mTLS HTTP 200 | Re-run against the current runtime. |
+| Client certificate from unrelated CA | Previously reported rejected with `unknown ca` | Re-run against the current runtime. |
+| Direct OpenSSL client to backend | Previously reported TLS 1.3 with `X25519MLKEM768` | Does not prove Envoy-to-Envoy hybrid negotiation. |
+| Frontend Envoy to backend Envoy hybrid group | NOT VERIFIED | Capture evidence from that exact upstream connection. |
+| ML-DSA certificate signatures | NOT IMPLEMENTED / NOT VERIFIED | Current certificates use ECDSA P-256. |
+
+Do not claim end-to-end hybrid key exchange or ML-DSA certificate support without
+specific runtime evidence. Re-run the checks against the current repository before
+treating the historical results above as current results.
