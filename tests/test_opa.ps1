@@ -136,7 +136,24 @@ Run-OpaEvalTest `
     -Query "data.authz.allow" `
     -ExpectedValue $false
 
+Write-Host "`n--- Part 5: Mesh Integration Identity Tests (opa/inputs/demo_*.json) ---" -ForegroundColor Cyan
+
+Run-OpaEvalTest `
+    -TestName "Mesh Identity Test 1: Demo Frontend SPIFFE URI Allowed [ALLOW]" `
+    -PolicyPath "opa/policies/authz.rego" `
+    -InputPath "opa/inputs/demo_frontend_allowed.json" `
+    -Query "data.authz.allow" `
+    -ExpectedValue $true
+
+Run-OpaEvalTest `
+    -TestName "Mesh Identity Test 2: Demo Unapproved SPIFFE URI Denied [DENY]" `
+    -PolicyPath "opa/policies/authz.rego" `
+    -InputPath "opa/inputs/demo_unapproved_denied.json" `
+    -Query "data.authz.allow" `
+    -ExpectedValue $false
+
 Write-Host "`n==========================================================" -ForegroundColor Cyan
+
 Write-Host "                   SUMMARY OF RESULTS                     " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "Total Evaluation Tests: $totalTests"

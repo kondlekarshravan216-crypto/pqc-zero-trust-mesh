@@ -15,6 +15,10 @@
 vault-token
 vault-creds.json
 
+# Whitelist markdown documentation
+!docs/*.md
+
+
 # Private key material and generated PKI output must never be committed
 pki/out/
 pki/out-clean/

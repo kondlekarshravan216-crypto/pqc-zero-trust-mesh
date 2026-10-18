@@ -69,7 +69,13 @@ run_opa_eval_test "SPIFFE SVID Test 1: Full SVID URI Allowed [ALLOW]" "opa/polic
 run_opa_eval_test "SPIFFE SVID Test 2: Rogue SVID URI Denied [DENY]" "opa/policies/authz.rego" "opa/tests/input_denied.json" "data.authz.allow" "false"
 
 echo ""
+echo "--- Part 5: Mesh Integration Identity Tests (opa/inputs/demo_*.json) ---"
+run_opa_eval_test "Mesh Identity Test 1: Demo Frontend SPIFFE URI Allowed [ALLOW]" "opa/policies/authz.rego" "opa/inputs/demo_frontend_allowed.json" "data.authz.allow" "true"
+run_opa_eval_test "Mesh Identity Test 2: Demo Unapproved SPIFFE URI Denied [DENY]" "opa/policies/authz.rego" "opa/inputs/demo_unapproved_denied.json" "data.authz.allow" "false"
+
+echo ""
 echo "=========================================================="
+
 echo "                   SUMMARY OF RESULTS                     "
 echo "=========================================================="
 echo "Total Evaluation Tests: ${TOTAL_TESTS}"

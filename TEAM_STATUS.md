@@ -26,17 +26,21 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [x] Established component testing matrix (isolated vs. pending E2E integration)
 - [x] Member 4 CA/mTLS/Envoy scripts and stand-in test suite (24 PASS) integrated into develop
 - [x] Day 4: Upstream integration merged into `feature/opa-vault` with 100% OPA test pass (16/16) and clean conflict resolution
+- [x] Day 5: Validated OPA ALLOW/DENY policies integrated into actual service request path (mTLS + OPA ext_authz)
+- [x] Day 5: Tested authorized and unauthorized requests across all 35 test vectors (10 unit + 10 eval + 15 live service path tests, 100% pass)
+- [x] Day 5: Verified Vault configuration (`vault-dev.hcl`), least-privilege policy (`mesh-secrets.hcl`), secret retrieval, rotation, and versioned rollback workflow
+- [x] Day 5: Tested dynamic key and certificate rotation behavior with zero-downtime hot-swap simulating Envoy SDS
+- [x] Day 5: Documented complete verification, configuration issues, and team coordination in `docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`
 
 ## Pending Work
 - [ ] Add/verify all GitHub collaborators
 - [ ] Decide shared integration environment
 - [ ] Review and merge OPA & Vault feature branch into develop via pull request
-- [ ] Verify Vault configuration and secret-management workflow in Kubernetes
-- [ ] Implement and test Kubernetes NetworkPolicies
-- [ ] Implement and test ECDH + ML-KEM hybrid key establishment
-- [ ] Configure live Envoy container validation and SDS dynamic certificate delivery
+- [ ] Implement and test Kubernetes NetworkPolicies (Member 2 — Dhanush)
+- [ ] Implement and test ECDH + ML-KEM hybrid key establishment (Member 3 — Tharun)
+- [ ] Configure live Envoy container validation and SDS dynamic certificate delivery (Member 4 — Agnes)
 - [ ] Integrate components and run end-to-end security tests
-- [ ] Build dashboard, benchmarks, and final reports
+- [ ] Build visual security dashboard consuming OPA decision logs (Member 5 — Manideep)
 
 ## Member Status
 
@@ -57,12 +61,15 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Next: Envoy live container validation and SDS integration with Vault.
 
 ### Member 5 — Manideep (OPA, Vault & Dashboard)
-- Completed (Day 4):
-  - Merged upstream develop changes (Agnes' PKI scripts, Envoy sidecars, and stand-in mTLS test runner) into `feature/opa-vault`.
-  - Re-verified all automated OPA tests (8 unit tests + 8 evaluation tests, 16/16 PASS) against the unified codebase.
-  - Aligned Vault secret management & dynamic PKI key-rotation lifecycle with Envoy SDS architecture.
-  - Prepared Day 4 Pull Request documentation in `docs/PULL_REQUEST_DAY4.md`.
-- Next: Wire live OPA `ext_authz` socket to Envoy sidecars and implement real-time security dashboard.
+- Completed (Day 5):
+  - Validated OPA ALLOW/DENY policies and integrated authorization with the live service request path via `envoy.filters.http.ext_authz` and Python mTLS stand-in.
+  - Tested authorized vs. unauthorized requests (20/20 unit/eval tests + 15/15 service path tests, 100% pass), verifying rejection of unapproved SVIDs, lateral movement to database, unauthorized HTTP verbs, and invalid/expired/untrusted certs.
+  - Verified Vault server dev configuration, least-privilege policy immutability, and KV v2 secret retrieval, rotation, and disaster rollback workflow.
+  - Investigated and tested dynamic key/certificate rotation with zero-downtime hot reload.
+  - Resolved SPIFFE trust domain mismatch between OPA and Envoy/PKI configs (`pqzt.local` + `cluster.local`).
+  - Documented full verification in `docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`.
+- Next: Build real-time telemetry dashboard consuming OPA decision logs.
+
 
 ## Integration Rules
 - Keep main stable; develop is the integration branch.

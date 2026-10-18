@@ -29,8 +29,24 @@ services:
       - "127.0.0.1:18443:8443"
     depends_on:
       - backend-app
+      - opa-service
     networks:
       - mesh
+
+  opa-service:
+    image: openpolicyagent/opa:latest
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "/policies"
+    volumes:
+      - "./opa/policies:/policies:ro"
+    ports:
+      - "127.0.0.1:8181:8181"
+    networks:
+      - mesh
+
 
   frontend-envoy:
     image: envoyproxy/envoy:v1.39.3

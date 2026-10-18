@@ -48,6 +48,24 @@ static_resources:
               - match: { prefix: "/" }
                 route: { cluster: backend_app }
           http_filters:
+          - name: envoy.filters.http.ext_authz
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+              http_service:
+                server_uri:
+                  uri: http://opa-service:8181/v1/data/authz/allow
+                  cluster: opa_service
+                  timeout: 0.5s
+                authorization_request:
+                  allowed_headers:
+                    patterns:
+                    - exact: x-forwarded-for
+                    - exact: authorization
+                authorization_response:
+                  allowed_upstream_headers:
+                    patterns:
+                    - exact: x-ext-authz-check-result
+              failure_mode_allow: false
           - name: envoy.filters.http.router
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -60,3 +78,12 @@ static_resources:
       endpoints:
       - lb_endpoints:
         - endpoint: { address: { socket_address: { address: backend-app, port_value: 8080 } } }
+  - name: opa_service
+    type: STRICT_DNS
+    connect_timeout: 2s
+    load_assignment:
+      cluster_name: opa_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint: { address: { socket_address: { address: opa-service, port_value: 8181 } } }
+

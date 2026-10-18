@@ -9,6 +9,7 @@ import argparse, socket, ssl, sys, yaml
 ap = argparse.ArgumentParser()
 ap.add_argument("--cert"); ap.add_argument("--key"); ap.add_argument("--ca")
 ap.add_argument("--envoy-config"); ap.add_argument("--port-file"); ap.add_argument("--log")
+ap.add_argument("--opa-url", default=None, help="OPA HTTP endpoint for ext_authz policy check")
 a = ap.parse_args()
 
 cfg = yaml.safe_load(open(a.envoy_config))
@@ -33,10 +34,23 @@ ctx.verify_flags |= ssl.VERIFY_X509_STRICT if hasattr(ssl, "VERIFY_X509_STRICT")
 log = open(a.log, "a", buffering=1)
 def L(msg): log.write(msg + "\n")
 
+def check_opa(identity, destination="backend", action="GET"):
+    if not a.opa_url:
+        return True, "OPA check skipped (no opa-url)"
+    import json, urllib.request
+    try:
+        payload = json.dumps({"input": {"identity": identity, "destination": destination, "action": action}}).encode("utf-8")
+        req = urllib.request.Request(f"{a.opa_url}/v1/data/authz/allow", data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=2) as r:
+            res = json.loads(r.read().decode("utf-8")).get("result", False)
+            return res, "OPA evaluated allow" if res else "OPA evaluated deny"
+    except Exception as e:
+        return False, f"OPA error: {e}"
+
 srv = socket.socket(); srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 srv.bind(("127.0.0.1", 0)); srv.listen(8)
 open(a.port_file, "w").write(str(srv.getsockname()[1]))
-L("READY allow=%s" % allow)
+L("READY allow=%s opa_url=%s" % (allow, a.opa_url))
 BODY = b'{"service":"backend","status":"ok"}\n'
 while True:
     raw, _ = srv.accept(); raw.settimeout(3)
@@ -48,11 +62,23 @@ while True:
         uris = [v for k, v in c.getpeercert().get("subjectAltName", ()) if k == "URI"]
         if not any(u in allow for u in uris):
             L("REJECT identity: presented=%s" % uris); c.close(); continue
-        c.recv(4096)
+        
+        req = c.recv(4096).decode("utf-8", errors="replace")
+        method = req.split(" ")[0] if req else "GET"
+        
+        # OPA ext_authz check on service request path
+        client_id = uris[0] if uris else ""
+        opa_allowed, opa_reason = check_opa(client_id, destination="backend", action=method)
+        if not opa_allowed:
+            err_body = b'{"error":"forbidden","reason":"Access denied by OPA ext_authz"}\n'
+            c.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(err_body) + err_body)
+            L("REJECT opa_ext_authz: %s (%s)" % (client_id, opa_reason)); c.close(); continue
+
         c.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(BODY) + BODY)
-        L("ACCEPT identity: %s" % uris)
+        L("ACCEPT identity: %s (OPA ext_authz: %s)" % (uris, opa_reason))
     except (ssl.SSLError, OSError) as e:
         L("ERROR after handshake: %s" % type(e).__name__)
     finally:
         try: c.close()
         except OSError: pass
+

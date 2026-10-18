@@ -33,3 +33,22 @@ test_deny_unauthorized_destination if {
 test_deny_empty_input if {
     not allow with input as {}
 }
+
+# Test case 5: Demo mesh SPIFFE identity allowed to access backend
+test_allow_demo_frontend_identity if {
+    allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/frontend",
+        "destination": "backend",
+        "action": "GET",
+    }
+}
+
+# Test case 6: Unauthorized action denied (e.g. DELETE method)
+test_deny_unauthorized_action if {
+    not allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/frontend",
+        "destination": "backend",
+        "action": "DELETE",
+    }
+}
+
