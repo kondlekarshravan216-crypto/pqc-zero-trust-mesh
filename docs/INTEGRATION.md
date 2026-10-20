@@ -15,8 +15,7 @@
 Needed from you: confirm namespace, Service names, sidecar vs. standalone Envoy, and secret-delivery method (cert-manager would replace `scripts/`).
 
 ## PQC teammate
-**Environment facts (probed, not assumed):** OpenSSL 3.0.13, default provider only; no ML-KEM/Kyber KEM listed; no
-`X25519MLKEM768` group usable. Envoy pinned in compose: `v1.31.0` (not run). **PQC status: NOT INTEGRATED.**
+**Environment facts vary by test environment.** Earlier offline tests used OpenSSL 3.0.13 and did not support `X25519MLKEM768`; live frontend upstream Envoy statistics confirm `cluster.backend_mtls.ssl.curves.X25519MLKEM768: 3`, `cluster.backend_mtls.ssl.versions.TLSv1.3: 3`, and `cluster.backend_mtls.ssl.handshake: 3`, with zero connection and certificate-verification errors. **PQC status: HYBRID KEY-EXCHANGE NEGOTIATION VERIFIED for the tested frontend-Envoy-to-backend-Envoy connection.** Fallback behavior remains untested; ML-DSA certificate signatures remain unimplemented.
 What exists today is classical: ECDSA P-256 certs, TLS 1.3, X25519, AES-256-GCM. Certificates and mTLS *authentication* are
 independent of key establishment; a quantum adversary recording traffic today can break X25519 later. Hybrid key exchange
 (e.g. X25519MLKEM768) protects confidentiality only; certificates stay classical (ECDSA) unless PQ signatures are added separately.
