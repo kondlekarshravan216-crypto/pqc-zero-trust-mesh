@@ -61,3 +61,9 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 
 ## Next Checkpoint
 Collect each member's files, branch/commit link, test results, and blockers. Review the OPA pull request and agree on component interfaces before end-to-end integration.
+
+## Hybrid ECDH + ML-KEM — 18 Oct 2026
+
+- Status: Prototype implemented; 5 focused tests passed using the project virtual environment.
+- Evidence: `hybrid-kem-test-results.txt`.
+- Pending: Security review, authenticated peer verification, and end-to-end Envoy/mTLS integration.
