@@ -7,12 +7,14 @@ Enterprise-oriented prototype implementing a Post-Quantum Zero-Trust Kubernetes 
 ## Architecture & System Components
 
 1. **OPA Policy Enforcement**: [`opa/README.md`](opa/README.md) - Decentralized authorization policies (`authorization.rego`, `authz.rego`), unit tests, test inputs, and security dashboard telemetry events. Integrated directly into the service request path via Envoy `ext_authz`.
-2. **Vault Secret Management & Rotation**: [`vault/README.md`](vault/README.md) - HashiCorp Vault server dev configuration, least-privilege mesh secrets access policy (`mesh-secrets.hcl`), and security architecture review. Detailed rotation blueprint in [`docs/integration_and_rotation_plan.md`](docs/integration_and_rotation_plan.md).
-3. **Automated Test Suites**:
-   - OPA Policy Tests: [`tests/test_opa.ps1`](tests/test_opa.ps1) & [`tests/test_opa.sh`](tests/test_opa.sh) (20/20 PASS: 10 unit + 10 eval tests).
-   - Live Service Path Authorization & Vault Suite: [`tests/test_service_path.py`](tests/test_service_path.py) & [`tests/test_service_path.ps1`](tests/test_service_path.ps1) (15/15 PASS).
-   - Full Verification Report: [`docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`](docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md).
-4. **CA, Service Identity, Envoy & mTLS Module**: [`pki/`](pki/), [`envoy/`](envoy/), [`scripts/`](scripts/) - Local test CA, SPIFFE service identities, Envoy sidecar configurations, and mTLS verification suite.
+2. **Vault Secret Management & PKI Key Rotation**: [`vault/README.md`](vault/README.md) - HashiCorp Vault server dev configuration, least-privilege mesh secrets and PKI access policies (`mesh-secrets.hcl`, `mesh-pki.hcl`), centralized Root CA, dynamic SDS workload leaf certificate issuance, automated renewal at 66% TTL, and CRL emergency revocation.
+3. **Observability & Security Dashboard**: [`dashboard/`](dashboard/) - Real-time zero-trust visual telemetry dashboard monitoring OPA ext_authz decisions, live SVG mesh topology with packet flow animation, Vault certificate rotation versions, and interactive traffic simulation. Run with `python dashboard/server.py 8050` or `./dashboard/run_dashboard.ps1`.
+4. **Automated Test Suites**:
+   - OPA Policy Tests: [`tests/test_opa.ps1`](tests/test_opa.ps1) & [`tests/test_opa.sh`](tests/test_opa.sh) (24/24 PASS: 14 unit + 10 eval tests).
+   - Live Service Path Authorization Suite: [`tests/test_service_path.py`](tests/test_service_path.py) & [`tests/test_service_path.ps1`](tests/test_service_path.ps1) (15/15 PASS).
+   - Vault PKI Setup, Renewal & Rotation Suite: [`tests/test_vault_pki.py`](tests/test_vault_pki.py) & [`tests/test_vault_pki.ps1`](tests/test_vault_pki.ps1) (11/11 PASS).
+   - Verification Reports: [`docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`](docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md), [`tests/results-service-authz.md`](tests/results-service-authz.md), [`tests/results-vault-pki.md`](tests/results-vault-pki.md).
+5. **CA, Service Identity, Envoy & mTLS Module**: [`pki/`](pki/), [`envoy/`](envoy/), [`scripts/`](scripts/) - Local test CA, SPIFFE service identities, Envoy sidecar configurations, and mTLS verification suite.
 
 
 ---

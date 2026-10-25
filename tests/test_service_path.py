@@ -33,6 +33,23 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 TESTS_DIR = ROOT_DIR / "tests"
 OPA_POLICIES_DIR = ROOT_DIR / "opa" / "policies"
 VAULT_DIR = ROOT_DIR / "vault"
+TELEMETRY_LOG = ROOT_DIR / "opa" / "telemetry" / "audit_log.json"
+
+
+def record_telemetry_event(event: dict):
+    try:
+        records = []
+        if TELEMETRY_LOG.exists():
+            try:
+                records = json.loads(TELEMETRY_LOG.read_text(encoding="utf-8"))
+            except Exception:
+                records = []
+        records.append(event)
+        records = records[-150:]
+        TELEMETRY_LOG.parent.mkdir(parents=True, exist_ok=True)
+        TELEMETRY_LOG.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    except Exception:
+        pass
 
 TOTAL_TESTS = 0
 PASSED_TESTS = 0
@@ -249,6 +266,18 @@ class StandinBackendService:
                     active_ctx = self.ssl_ctx
                 tls_conn = active_ctx.wrap_socket(raw_conn, server_side=True)
             except (ssl.SSLError, OSError) as e:
+                err_msg = getattr(e, "reason", str(e))
+                record_telemetry_event({
+                    "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "eventType": "failed_authentication",
+                    "category": "authentication",
+                    "severity": "HIGH",
+                    "clientIp": "127.0.0.1",
+                    "peerCertificateFingerprint": "unverified",
+                    "tlsCipherSuite": "TLS_AES_256_GCM_SHA384",
+                    "failureReason": f"mTLS verification failed: {err_msg}",
+                    "targetService": "backend-service"
+                })
                 try:
                     raw_conn.close()
                 except Exception:
@@ -285,6 +314,20 @@ class StandinBackendService:
                     "action": method,
                     "path": req_path,
                     "allow": allow,
+                    "reason": reason
+                })
+
+                record_telemetry_event({
+                    "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "eventType": "allowed_request" if allow else "denied_request",
+                    "category": "authorization",
+                    "severity": "INFO" if allow else "WARNING",
+                    "sourceIdentity": client_identity,
+                    "destinationService": destination,
+                    "action": method,
+                    "path": req_path,
+                    "policy": "authz",
+                    "decision": allow,
                     "reason": reason
                 })
 

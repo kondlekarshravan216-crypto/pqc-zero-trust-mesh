@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PQC Zero-Trust Mesh | Observability & Security Dashboard</title>
+  <meta name="description" content="Real-time security telemetry dashboard for Post-Quantum Zero-Trust Microsegmentation Mesh, monitoring OPA ext_authz decisions and Vault PKI certificate rotation.">
+  
+  <!-- Modern Typography from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="css/index.css">
+</head>
+<body class="dark-theme">
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 8v4"/>
+            <path d="M12 16h.01"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">PQC Mesh</span>
+          <span class="brand-subtitle">Zero-Trust Guard</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#overview" class="nav-item active" id="nav-overview" data-tab="overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Overview & Mesh Map</span>
+        </a>
+        <a href="#authorizations" class="nav-item" id="nav-authorizations" data-tab="authorizations">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+          <span>OPA ext_authz</span>
+        </a>
+        <a href="#certificates" class="nav-item" id="nav-certificates" data-tab="certificates">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+          </svg>
+          <span>Vault PKI & Rotation</span>
+        </a>
+        <a href="#events" class="nav-item" id="nav-events" data-tab="events">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Audit Event Stream</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="pqc-status-badge">
+          <span class="pqc-indicator"></span>
+          <div class="pqc-info">
+            <span class="pqc-title">PQC Security Active</span>
+            <span class="pqc-cipher">ECDH + ML-KEM-768</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navigation & Status Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 class="header-title">Zero-Trust Security Mesh Observability</h1>
+          <p class="header-subtitle">Real-time telemetry from OPA policy decisions, Envoy mTLS ext_authz, and HashiCorp Vault dynamic key rotation</p>
+        </div>
+
+        <div class="header-right">
+          <div class="status-pill active-pill" id="mesh-health-pill">
+            <span class="pulse-dot green"></span>
+            <span class="pill-label">Mesh: 100% Policy Enforced</span>
+          </div>
+          
+          <div class="status-pill" id="vault-pki-pill">
+            <span class="pulse-dot cyan"></span>
+            <span class="pill-label">Vault PKI: Active (pki_mesh)</span>
+          </div>
+
+          <button class="btn btn-outline" id="btn-refresh" title="Reload audit telemetry">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+            </svg>
+            <span>Refresh</span>
+          </button>
+
+          <button class="btn btn-primary" id="btn-run-tests-modal" title="Trigger automated test suite">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span>Run Test Suites</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- KPI Metrics Grid -->
+      <section class="kpi-grid">
+        <div class="kpi-card" id="kpi-total-requests">
+          <div class="kpi-icon-wrap blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Evaluated Requests</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value" id="val-total-requests">--</span>
+              <span class="kpi-badge neutral" id="badge-total-requests">100% Monitored</span>
+            </div>
+            <span class="kpi-caption">End-to-end request path traffic</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-allowed">
+          <div class="kpi-icon-wrap emerald">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Authorized (ALLOW)</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value text-emerald" id="val-allowed-requests">--</span>
+              <span class="kpi-badge emerald" id="badge-allowed-pct">--%</span>
+            </div>
+            <span class="kpi-caption">Verified frontend SPIFFE SVIDs</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-denied">
+          <div class="kpi-icon-wrap rose">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Blocked (DENY)</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value text-rose" id="val-denied-requests">--</span>
+              <span class="kpi-badge rose" id="badge-denied-pct">Zero Breach</span>
+            </div>
+            <span class="kpi-caption">Lateral movement & rogue SVIDs</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-cert-rotations">
+          <div class="kpi-icon-wrap purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">Vault PKI Rotations</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value text-purple" id="val-rotations">--</span>
+              <span class="kpi-badge purple" id="badge-rotations">Hot Reload</span>
+            </div>
+            <span class="kpi-caption">Zero-downtime Envoy SDS updates</span>
+          </div>
+        </div>
+
+        <div class="kpi-card" id="kpi-revocations">
+          <div class="kpi-icon-wrap amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-label">CRL Revocations</span>
+            <div class="kpi-value-row">
+              <span class="kpi-value text-amber" id="val-revocations">--</span>
+              <span class="kpi-badge amber" id="badge-revocations">CRL Active</span>
+            </div>
+            <span class="kpi-caption">Compromised serials isolated</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Tabs Container -->
+      <div class="tab-content-area">
+        <!-- Tab 1: Overview & Interactive Mesh Topology -->
+        <section class="tab-panel active" id="panel-overview">
+          <div class="dashboard-split-grid">
+            <!-- Left: Interactive Topology Canvas -->
+            <div class="card topology-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Live Zero-Trust Mesh Topology</h2>
+                  <p class="card-subtitle">Request path authorization & microsegmentation perimeter</p>
+                </div>
+                <div class="mesh-legend">
+                  <span class="legend-item"><span class="legend-dot green"></span> Allowed Path</span>
+                  <span class="legend-item"><span class="legend-dot red"></span> Blocked Lateral</span>
+                  <span class="legend-item"><span class="legend-dot purple"></span> SDS Cert Sync</span>
+                </div>
+              </div>
+
+              <div class="topology-canvas-wrap">
+                <svg id="mesh-svg-canvas" viewBox="0 0 800 420" width="100%" height="100%">
+                  <defs>
+                    <linearGradient id="grad-allowed" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#10b981" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.8"/>
+                    </linearGradient>
+                    <linearGradient id="grad-denied" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#f43f5e" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#fb7185" stop-opacity="0.4"/>
+                    </linearGradient>
+                    <linearGradient id="grad-sds" x1="0%" y1="100%" x2="0%" y2="0%">
+                      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.2"/>
+                    </linearGradient>
+                    <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="4" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="4" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
+
+                  <!-- Connection Paths -->
+                  <!-- Path 1: Frontend -> Backend Envoy (Allowed) -->
+                  <path id="path-fe-be" d="M 180 130 C 260 130, 310 130, 390 130" class="mesh-link allowed-link"/>
+                  
+                  <!-- Path 2: Backend Envoy <-> OPA ext_authz -->
+                  <path id="path-envoy-opa" d="M 440 100 C 440 60, 440 50, 440 40" class="mesh-link opa-link"/>
+                  
+                  <!-- Path 3: Backend Envoy -> Backend App -->
+                  <path id="path-envoy-app" d="M 490 130 C 540 130, 580 130, 630 130" class="mesh-link local-link"/>
+
+                  <!-- Path 4: Frontend -> Lateral Database (Blocked) -->
+                  <path id="path-fe-db" d="M 180 160 C 260 220, 380 290, 630 290" class="mesh-link denied-link"/>
+
+                  <!-- Path 5: Rogue Attacker -> Backend Envoy (Blocked) -->
+                  <path id="path-attacker-be" d="M 180 290 C 270 290, 340 220, 410 160" class="mesh-link denied-link"/>
+
+                  <!-- Path 6: Vault PKI -> Envoy SDS Stream -->
+                  <path id="path-vault-sds" d="M 440 340 C 440 270, 440 220, 440 160" class="mesh-link sds-link"/>
+
+                  <!-- Dynamic Packet Animations (Controlled via JS) -->
+                  <circle id="anim-packet-fe" r="5" fill="#10b981" filter="url(#glow-green)" style="display:none;"/>
+                  <circle id="anim-packet-deny" r="5" fill="#f43f5e" filter="url(#glow-red)" style="display:none;"/>
+
+                  <!-- Node 1: Frontend Workload -->
+                  <g class="mesh-node-group" transform="translate(70, 90)" id="node-frontend">
+                    <rect width="120" height="80" rx="12" class="node-box active-node"/>
+                    <text x="60" y="32" text-anchor="middle" class="node-title">Frontend</text>
+                    <text x="60" y="48" text-anchor="middle" class="node-subtitle">demo / frontend</text>
+                    <text x="60" y="66" text-anchor="middle" class="node-id">SVID: .../demo/sa/frontend</text>
+                  </g>
+
+                  <!-- Node 2: Backend Envoy Sidecar + OPA ext_authz Interceptor -->
+                  <g class="mesh-node-group" transform="translate(390, 95)" id="node-envoy">
+                    <rect width="100" height="70" rx="12" class="node-box envoy-box"/>
+                    <text x="50" y="30" text-anchor="middle" class="node-title">Backend Envoy</text>
+                    <text x="50" y="48" text-anchor="middle" class="node-subtitle">mTLS + ext_authz</text>
+                  </g>
+
+                  <!-- Node 3: OPA Policy Engine -->
+                  <g class="mesh-node-group" transform="translate(390, 5)" id="node-opa">
+                    <rect width="100" height="42" rx="8" class="node-box opa-box"/>
+                    <text x="50" y="20" text-anchor="middle" class="node-title-sm">OPA Engine</text>
+                    <text x="50" y="34" text-anchor="middle" class="node-sub-sm">authz.rego (v1)</text>
+                  </g>
+
+                  <!-- Node 4: Backend Service Application -->
+                  <g class="mesh-node-group" transform="translate(630, 95)" id="node-backend-app">
+                    <rect width="110" height="70" rx="12" class="node-box app-box"/>
+                    <text x="55" y="30" text-anchor="middle" class="node-title">Backend App</text>
+                    <text x="55" y="48" text-anchor="middle" class="node-subtitle">Port 8080 (REST)</text>
+                  </g>
+
+                  <!-- Node 5: Rogue Workload / Attacker -->
+                  <g class="mesh-node-group" transform="translate(70, 255)" id="node-attacker">
+                    <rect width="120" height="70" rx="12" class="node-box attacker-box"/>
+                    <text x="60" y="30" text-anchor="middle" class="node-title text-rose">Rogue Workload</text>
+                    <text x="60" y="48" text-anchor="middle" class="node-subtitle">Unapproved SVID</text>
+                  </g>
+
+                  <!-- Node 6: Protected Database (Microsegmented) -->
+                  <g class="mesh-node-group" transform="translate(630, 255)" id="node-database">
+                    <rect width="110" height="70" rx="12" class="node-box database-box"/>
+                    <text x="55" y="30" text-anchor="middle" class="node-title">Database</text>
+                    <text x="55" y="48" text-anchor="middle" class="node-subtitle">Isolated Segment</text>
+                  </g>
+
+                  <!-- Node 7: HashiCorp Vault PKI Engine -->
+                  <g class="mesh-node-group" transform="translate(370, 340)" id="node-vault">
+                    <rect width="140" height="60" rx="12" class="node-box vault-box"/>
+                    <text x="70" y="26" text-anchor="middle" class="node-title">HashiCorp Vault</text>
+                    <text x="70" y="44" text-anchor="middle" class="node-subtitle">PKI Engine (pki_mesh)</text>
+                  </g>
+                </svg>
+              </div>
+
+              <!-- Interactive Live Traffic Simulator Panel -->
+              <div class="simulation-bar">
+                <span class="sim-label">Live Traffic Simulation:</span>
+                <div class="sim-buttons">
+                  <button class="btn btn-sm btn-success" id="btn-sim-allow">
+                    <span class="btn-indicator green"></span> Send Authorized Request
+                  </button>
+                  <button class="btn btn-sm btn-danger" id="btn-sim-lateral">
+                    <span class="btn-indicator red"></span> Attempt Lateral Movement (/database)
+                  </button>
+                  <button class="btn btn-sm btn-danger" id="btn-sim-rogue">
+                    <span class="btn-indicator red"></span> Rogue Attacker SVID
+                  </button>
+                  <button class="btn btn-sm btn-warning" id="btn-sim-rotate">
+                    <span class="btn-indicator purple"></span> Rotate Cert (Vault SDS)
+                  </button>
+                  <button class="btn btn-sm btn-dark" id="btn-sim-revoke">
+                    <span class="btn-indicator amber"></span> Revoke Serial (CRL)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Dynamic Security Telemetry Stream Widget -->
+            <div class="card quick-stream-card">
+              <div class="card-header">
+                <div>
+                  <h2 class="card-title">Recent Verified Telemetry</h2>
+                  <p class="card-subtitle">Real-time authorization & crypto events</p>
+                </div>
+                <span class="badge-live"><span class="pulse-dot green"></span> Live Stream</span>
+              </div>
+
+              <div class="mini-event-list" id="mini-event-stream">
+                <!-- Populated via JavaScript -->
+                <div class="empty-state-loading">Loading telemetry stream...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 2: OPA Decisions & Authorization Deep-Dive -->
+        <section class="tab-panel" id="panel-authorizations">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">OPA Policy Authorization Decisions</h2>
+                <p class="card-subtitle">Enforced at runtime via Envoy HTTP filter `envoy.filters.http.ext_authz`</p>
+              </div>
+              <div class="filter-group">
+                <input type="text" class="search-input" id="authz-search" placeholder="Search by SVID, destination, or reason...">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="table-authorizations">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Decision</th>
+                    <th>Source SVID / Identity</th>
+                    <th>Target Destination</th>
+                    <th>Action</th>
+                    <th>Resource Path</th>
+                    <th>OPA Reason / Rule</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-authorizations">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 3: Vault PKI & Certificate Lifecycle Tracker -->
+        <section class="tab-panel" id="panel-certificates">
+          <div class="cert-overview-grid">
+            <!-- Root CA Card -->
+            <div class="card root-ca-card">
+              <div class="card-header">
+                <h2 class="card-title">Centralized Mesh Root CA</h2>
+                <span class="badge success">ACTIVE</span>
+              </div>
+              <div class="root-ca-info">
+                <div class="info-row">
+                  <span class="info-label">Common Name:</span>
+                  <span class="info-val font-mono" id="ca-cn">PQC Zero-Trust Mesh Root CA</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Engine Mount:</span>
+                  <span class="info-val font-mono">pki_mesh</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">CA Serial:</span>
+                  <span class="info-val font-mono text-cyan" id="ca-serial">--</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Key Algorithm:</span>
+                  <span class="info-val">Hybrid ECDH-P256 + ML-KEM-768 / SHA-256</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Workload Role:</span>
+                  <span class="info-val font-mono">mesh-workload (12h TTL, short-lived)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SDS Hot-Reload Engine Status -->
+            <div class="card sds-status-card">
+              <div class="card-header">
+                <h2 class="card-title">Dynamic Envoy SDS Status</h2>
+                <span class="badge purple">HOT-RELOAD READY</span>
+              </div>
+              <div class="sds-metrics">
+                <div class="sds-metric-item">
+                  <span class="sds-metric-num" id="sds-active-leafs">2</span>
+                  <span class="sds-metric-label">Active Leaf Certs</span>
+                </div>
+                <div class="sds-metric-item">
+                  <span class="sds-metric-num text-purple" id="sds-renewals">--</span>
+                  <span class="sds-metric-label">Dynamic Renewals (V2/V3)</span>
+                </div>
+                <div class="sds-metric-item">
+                  <span class="sds-metric-num text-amber" id="sds-revoked">--</span>
+                  <span class="sds-metric-label">Revoked Serials in CRL</span>
+                </div>
+              </div>
+              <p class="sds-desc">Secret Discovery Service streams renewed certificates directly to Envoy in-memory without listener socket restart or dropped TLS connections.</p>
+            </div>
+          </div>
+
+          <!-- Workload Leaf Certificates Table -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Workload Leaf Certificates & Dynamic Rotation History</h2>
+                <p class="card-subtitle">Short-lived certificates issued with SPIFFE URI SANs and dynamic rotation versions</p>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="table-certificates">
+                <thead>
+                  <tr>
+                    <th>Workload Service</th>
+                    <th>SPIFFE SVID URI</th>
+                    <th>Version</th>
+                    <th>Serial Number</th>
+                    <th>Rotation Type</th>
+                    <th>Status</th>
+                    <th>Valid Range</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-certificates">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 4: Full Audit Event Stream Table -->
+        <section class="tab-panel" id="panel-events">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Security & Audit Event Stream</h2>
+                <p class="card-subtitle">Structured telemetry records from `opa/telemetry/audit_log.json`</p>
+              </div>
+              <div class="filter-bar">
+                <select class="select-filter" id="filter-event-category">
+                  <option value="all">All Categories</option>
+                  <option value="authorization">Authorization (OPA)</option>
+                  <option value="authentication">Authentication (mTLS)</option>
+                  <option value="crypto_lifecycle">Crypto Lifecycle (Vault PKI)</option>
+                </select>
+                <select class="select-filter" id="filter-severity">
+                  <option value="all">All Severities</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="WARNING">WARNING</option>
+                  <option value="INFO">INFO</option>
+                </select>
+                <input type="text" class="search-input" id="events-search" placeholder="Filter audit events...">
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="table-events">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Severity</th>
+                    <th>Category</th>
+                    <th>Event Type</th>
+                    <th>Identity / Subject</th>
+                    <th>Decision / Status</th>
+                    <th>Description / Details</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-events">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Event JSON Payload Viewer -->
+  <div class="modal-backdrop" id="modal-json-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Telemetry Audit Event Details</h3>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre class="json-viewer" id="modal-json-content"><code></code></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-copy-json">Copy JSON</button>
+        <button class="btn btn-primary" id="btn-close-modal-footer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Test Suite Runner -->
+  <div class="modal-backdrop" id="modal-tests-backdrop" style="display: none;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">Mesh Test Suite Execution Console</h3>
+        <button class="modal-close" id="btn-close-tests-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="test-runner-actions">
+          <button class="btn btn-primary" id="btn-exec-service-tests">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Execute Service Request Path Suite (15 Tests)
+          </button>
+          <button class="btn btn-outline" id="btn-exec-vault-tests">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Execute Vault PKI & Rotation Suite (11 Tests)
+          </button>
+        </div>
+        <div class="test-terminal" id="test-terminal-output">
+          <div class="terminal-placeholder">Ready to execute tests. Click a button above to run verified test suites against live OPA and Vault PKI engines.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="btn-close-tests-modal-footer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

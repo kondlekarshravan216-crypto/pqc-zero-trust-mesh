@@ -31,6 +31,9 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [x] Day 5: Verified Vault configuration (`vault-dev.hcl`), least-privilege policy (`mesh-secrets.hcl`), secret retrieval, rotation, and versioned rollback workflow
 - [x] Day 5: Tested dynamic key and certificate rotation behavior with zero-downtime hot-swap simulating Envoy SDS
 - [x] Day 5: Documented complete verification, configuration issues, and team coordination in `docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`
+- [x] Day 6: Coordinated Vault PKI engine setup, automated certificate renewal, dynamic rotation, and emergency CRL revocation (`tests/test_vault_pki.py`, 11/11 PASS)
+- [x] Day 6: Integrated OPA decisions with the live service request path via `envoy.filters.http.ext_authz` and end-to-end mTLS interception (`tests/test_service_path.py`, 15/15 PASS)
+- [x] Day 6: Built real-time visual security dashboard (`dashboard/`) consuming verified authorization and certificate events with interactive mesh topology and simulation console
 
 ## Pending Work
 - [ ] Add/verify all GitHub collaborators
@@ -40,7 +43,6 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [ ] Implement and test ECDH + ML-KEM hybrid key establishment (Member 3 — Tharun)
 - [ ] Configure live Envoy container validation and SDS dynamic certificate delivery (Member 4 — Agnes)
 - [ ] Integrate components and run end-to-end security tests
-- [ ] Build visual security dashboard consuming OPA decision logs (Member 5 — Manideep)
 
 ## Member Status
 
@@ -61,14 +63,12 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Next: Envoy live container validation and SDS integration with Vault.
 
 ### Member 5 — Manideep (OPA, Vault & Dashboard)
-- Completed (Day 5):
-  - Validated OPA ALLOW/DENY policies and integrated authorization with the live service request path via `envoy.filters.http.ext_authz` and Python mTLS stand-in.
-  - Tested authorized vs. unauthorized requests (20/20 unit/eval tests + 15/15 service path tests, 100% pass), verifying rejection of unapproved SVIDs, lateral movement to database, unauthorized HTTP verbs, and invalid/expired/untrusted certs.
-  - Verified Vault server dev configuration, least-privilege policy immutability, and KV v2 secret retrieval, rotation, and disaster rollback workflow.
-  - Investigated and tested dynamic key/certificate rotation with zero-downtime hot reload.
-  - Resolved SPIFFE trust domain mismatch between OPA and Envoy/PKI configs (`pqzt.local` + `cluster.local`).
-  - Documented full verification in `docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md`.
-- Next: Build real-time telemetry dashboard consuming OPA decision logs.
+- Completed (Day 5 & Day 6):
+  - Validated OPA ALLOW/DENY policies and integrated authorization directly with the live service request path via `envoy.filters.http.ext_authz` and end-to-end mTLS interception.
+  - Tested authorized vs. unauthorized requests (24 OPA unit/eval tests + 15 service path tests, 100% pass), verifying rejection of unapproved SVIDs, lateral movement to database, unauthorized HTTP verbs, and invalid/expired/untrusted certs.
+  - Coordinated HashiCorp Vault PKI engine setup (`vault/scripts/vault_pki_coordinator.py`, `vault/policies/mesh-pki.hcl`) and verified automated certificate renewal, dynamic rotation (Envoy SDS model), and emergency CRL revocation with 11/11 tests passing (`tests/test_vault_pki.py`, `tests/test_vault_pki.ps1`).
+  - Built state-of-the-art interactive Observability & Security Dashboard (`dashboard/`) with real-time telemetry API (`dashboard/server.py`), live SVG mesh topology with packet flow animation, certificate lifecycle tracker, audit log inspector, and live simulation controls.
+- Next: Prepare pull request and assist with team end-to-end integration with Kubernetes NetworkPolicies and PQC hybrid key exchange.
 
 
 ## Integration Rules

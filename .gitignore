@@ -39,4 +39,6 @@ Thumbs.db
 *.log
 tmp/
 scratch/
+__pycache__/
+*.pyc
 

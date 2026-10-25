@@ -64,18 +64,46 @@ while True:
             L("REJECT identity: presented=%s" % uris); c.close(); continue
         
         req = c.recv(4096).decode("utf-8", errors="replace")
-        method = req.split(" ")[0] if req else "GET"
+        parts = req.split(" ")
+        method = parts[0] if len(parts) > 0 and parts[0] else "GET"
+        path = parts[1] if len(parts) > 1 else "/"
+        
+        # Determine destination service from request path
+        destination = "database" if "/database" in path else "backend"
         
         # OPA ext_authz check on service request path
         client_id = uris[0] if uris else ""
-        opa_allowed, opa_reason = check_opa(client_id, destination="backend", action=method)
+        opa_allowed, opa_reason = check_opa(client_id, destination=destination, action=method)
         if not opa_allowed:
-            err_body = b'{"error":"forbidden","reason":"Access denied by OPA ext_authz"}\n'
-            c.sendall(b"HTTP/1.1 403 Forbidden\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(err_body) + err_body)
-            L("REJECT opa_ext_authz: %s (%s)" % (client_id, opa_reason)); c.close(); continue
+            err_body = (
+                f'{{"error":"forbidden","reason":"Access denied by OPA ext_authz: {opa_reason}",'
+                f'"opa_decision":"deny","destination":"{destination}","identity":"{client_id}"}}\n'
+            ).encode("utf-8")
+            c.sendall(
+                b"HTTP/1.1 403 Forbidden\r\n"
+                b"Content-Type: application/json\r\n"
+                b"X-Ext-Authz-Decision: deny\r\n"
+                b"Connection: close\r\n"
+                + f"Content-Length: {len(err_body)}\r\n\r\n".encode("utf-8")
+                + err_body
+            )
+            L("REJECT opa_ext_authz: %s -> %s [%s] (%s)" % (client_id, destination, method, opa_reason))
+            c.close()
+            continue
 
-        c.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(BODY) + BODY)
-        L("ACCEPT identity: %s (OPA ext_authz: %s)" % (uris, opa_reason))
+        success_body = (
+            f'{{"service":"backend","status":"ok","opa_decision":"allow",'
+            f'"identity":"{client_id}","destination":"{destination}"}}\n'
+        ).encode("utf-8")
+        c.sendall(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: application/json\r\n"
+            b"X-Ext-Authz-Decision: allow\r\n"
+            b"Connection: close\r\n"
+            + f"Content-Length: {len(success_body)}\r\n\r\n".encode("utf-8")
+            + success_body
+        )
+        L("ACCEPT identity: %s -> %s [%s] (OPA ext_authz: %s)" % (client_id, destination, method, opa_reason))
     except (ssl.SSLError, OSError) as e:
         L("ERROR after handshake: %s" % type(e).__name__)
     finally:
