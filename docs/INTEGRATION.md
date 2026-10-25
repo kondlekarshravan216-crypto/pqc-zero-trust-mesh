@@ -37,3 +37,23 @@ in `tests/results-20261013-final.md`.
 Hybrid post-quantum key exchange and ML-DSA certificate integration
 through the running Envoy services remain unverified. Do not claim PQC
 integration is complete without direct handshake and certificate evidence.
+
+## Certificate Loading and Rotation
+
+### Current implementation
+- Docker Compose mounts backend and frontend certificate chains, private keys, and CA certificates read-only under `/etc/pqzt/certs/`.
+- Envoy loads these files through `tls_certificates` and `validation_context.trusted_ca` in `envoy/backend-envoy.yaml` and `envoy/frontend-envoy.yaml`.
+- Backend Envoy requires client certificates and checks the trusted CA and frontend SPIFFE URI SAN.
+- File-based TLS secrets are used. SDS and automated certificate rotation are not implemented; replacing a host file alone must not be assumed to reload an active Envoy secret.
+
+### Proposed rotation approach — not implemented or tested
+1. Issue replacement certificates and verify validity, SANs, EKUs, and private-key match before deployment.
+2. Prefer Envoy Secret Discovery Service (SDS) with a secured, authenticated provider for certificate and validation-context updates. Keep CA private keys outside service containers.
+3. Without SDS, install replacement files through a controlled deployment and restart or roll Envoy to reload them.
+4. Verify the replacement certificate and trust chain; test valid and untrusted clients and the expected SPIFFE identity.
+5. Define expiry monitoring, rollback, and CA rotation procedures before production use.
+
+### Verification status
+- **Verified:** Envoy configuration validation passed; a request through frontend Envoy returned HTTP 200 with `{"service":"backend","status":"ok"}`.
+- **Not verified in the current live test:** rejection of the temporary untrusted client certificate. Its chain failed verification against the configured CA, but the OpenSSL session did not establish server-side rejection.
+- **Not implemented/tested:** SDS-based rotation and automatic certificate reload.
