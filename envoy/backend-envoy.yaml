@@ -1,6 +1,6 @@
 # Backend-side Envoy: terminates mTLS, REQUIRES a client cert signed by the mesh CA whose
 # SAN is exactly the frontend identity, then forwards plaintext to the local backend app.
-# STATUS: written to Envoy v1.31 API; NOT executed/validated in the authoring environment (no Envoy available).
+# STATUS: standalone Envoy configuration validation passed in the runtime environment; see docs/INTEGRATION.md. This does not prove Envoy-to-Envoy hybrid-group negotiation.
 admin:
   address: { socket_address: { address: 127.0.0.1, port_value: 9901 } }   # loopback only
 static_resources:
