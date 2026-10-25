@@ -63,7 +63,7 @@ Hybrid post-quantum key exchange and ML-DSA certificate integration through the 
 ### Verification status
 
 - **Verified:** Envoy configuration validation passed; a request through frontend Envoy returned HTTP 200 with `{"service":"backend","status":"ok"}`.
-- **Not verified in the current live test:** rejection of the temporary untrusted client certificate. Its chain failed verification against the configured CA, but the OpenSSL session did not establish server-side rejection.
+- **Verified (live test):** a request using a client certificate issued by `Untrusted Test CA` reached backend Envoy with server hostname verification enabled, then failed with TLS alert `unknown CA`. The test certificate chain also failed local verification against the configured backend CA. Backend Envoy logs produced no additional entries during the check, so the TLS alert is the available rejection evidence.
 - **Not implemented/tested:** SDS-based rotation and automatic certificate reload.
 
 ## Runtime verification update — 2026-10-16
