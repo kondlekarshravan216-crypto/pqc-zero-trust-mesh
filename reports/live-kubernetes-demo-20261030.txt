@@ -1,0 +1,27 @@
+KUBERNETES MICROSSEGMENTATION LIVE DEMO
+Date: 30 October 2026
+
+Cluster: Minikube
+Kubernetes: v1.37.0
+Namespace: zero-trust-demo
+
+Pods:
+- Backend: Running
+- Frontend test: Running
+- Unauthorized test: Running
+
+NetworkPolicies:
+- backend-restrict-ingress
+- default-deny-ingress
+
+TEST 1: Authorized frontend -> Backend
+Result: SUCCESS
+Response: zero-trust-backend-ok
+
+TEST 2: Unauthorized workload -> Backend
+Result: BLOCKED
+Observation: wget download timed out (exit code 1)
+
+Conclusion:
+Authorized service communication succeeded.
+Unauthorized service communication was blocked.

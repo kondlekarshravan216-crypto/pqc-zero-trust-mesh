@@ -1,14 +1,27 @@
-# Private key material and generated PKI output must never be committed
-pki/out/
-tests/work/
-*.key
-*.srl
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Additional generated credentials and test artifacts
+# Local Python environments
+.venv/
+venv/
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+
+# Private key material and generated PKI output
+*.key
+*.pem
+*.srl
 *.csr
 *.p12
 *.pfx
-tests/.work-run.*/
-tests/work/
-
+pki/out/
 pki/out-clean/
+tests/work/
+tests/.work-run.*/
