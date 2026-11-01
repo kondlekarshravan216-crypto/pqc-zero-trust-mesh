@@ -1,0 +1,27 @@
+Kubernetes Microsegmentation Verification
+Date: 2026-10-24
+Environment: Minikube
+
+Authorized test:
+Frontend -> Backend
+Result: PASS
+Response: zero-trust-backend-ok
+Exit code: 0
+
+Unauthorized test:
+Unauthorized -> Backend
+Result: BLOCKED AS EXPECTED
+Observed error: wget download timed out
+Exit code: 1
+
+Backend endpoint:
+10.244.120.77:8080
+
+Network policies:
+- backend-restrict-ingress (pod selector: app=backend)
+- default-deny-ingress (all pods selected)
+
+Conclusion:
+Observed traffic behavior is consistent with the intended Kubernetes
+ingress microsegmentation policy. The authorized connection succeeds
+while the unauthorized connection is blocked.
