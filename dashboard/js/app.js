@@ -1,7 +1,7 @@
 /**
  * PQC Zero-Trust Mesh - Observability & Security Dashboard Engine
- * Handles real-time telemetry processing, topology packet animation,
- * interactive simulation, and dynamic test execution.
+ * Handles real-time telemetry processing, genuine OPA policy evaluations,
+ * Vault PKI lifecycle coordination, topology animations, and test suites.
  */
 
 // Application State
@@ -79,7 +79,7 @@ function setupNavigation() {
 
 function switchTab(tabId) {
   state.activeTab = tabId;
-  
+
   // Update sidebar active class
   document.querySelectorAll('.nav-item').forEach(item => {
     item.classList.toggle('active', item.getAttribute('data-tab') === tabId);
@@ -97,7 +97,7 @@ function switchTab(tabId) {
 async function loadTelemetryData(showNotice = false) {
   try {
     let events = [];
-    
+
     // First try relative API endpoint
     try {
       const resp = await fetch('/api/events');
@@ -131,7 +131,7 @@ async function loadTelemetryData(showNotice = false) {
 
 function updateKPIs() {
   const events = state.events;
-  
+
   // 1. Total & Authz Decisions
   const authzEvents = events.filter(e => e.category === 'authorization' || e.eventType === 'allowed_request' || e.eventType === 'denied_request');
   const allowed = authzEvents.filter(e => e.decision === true || e.eventType === 'allowed_request').length;
@@ -142,6 +142,10 @@ function updateKPIs() {
   const rotationEvents = events.filter(e => e.eventType === 'key_certificate_rotation');
   const rotations = rotationEvents.filter(e => e.rotationType === 'scheduled_rotation' || e.rotationType === 'initial_issuance').length;
   const revocations = rotationEvents.filter(e => e.status === 'REVOKED' || e.rotationType === 'emergency_revocation').length;
+
+  // 3. Genuine vs Simulated breakdown
+  const genuineCount = events.filter(e => e.isGenuine === true).length;
+  const genuinePct = events.length > 0 ? Math.round((genuineCount / events.length) * 100) : 100;
 
   // Update DOM Elements
   const elTotal = document.getElementById('val-total-requests');
@@ -160,6 +164,12 @@ function updateKPIs() {
   if (elDenied) elDenied.textContent = denied;
   if (elRotations) elRotations.textContent = rotations;
   if (elRevocations) elRevocations.textContent = revocations;
+
+  // Update Provenance Pill in header
+  const elProvPill = document.getElementById('val-provenance-pill');
+  if (elProvPill) {
+    elProvPill.textContent = `Telemetry: ${genuinePct}% Genuine (${genuineCount}/${events.length})`;
+  }
 
   // Update SDS metrics
   const elSdsRenewals = document.getElementById('sds-renewals');
@@ -190,12 +200,16 @@ function renderMiniStream() {
     const type = formatEventType(e.eventType);
     const identity = e.sourceIdentity || e.serviceIdentity || e.clientIp || 'Unknown';
     const desc = e.reason || e.details || e.failureReason || 'Action logged';
+    const provBadge = e.isGenuine ? '<span class="badge genuine" style="font-size:9px; padding:1px 4px;">GENUINE</span>' : '<span class="badge simulated" style="font-size:9px; padding:1px 4px;">SIMULATED</span>';
 
     return `
       <div class="mini-event-card severity-${sev}" onclick="viewEventDetails(${state.events.length - 1 - idx})">
         <div class="mini-event-header">
           <span class="mini-event-type">${type}</span>
-          <span class="mini-event-time">${timeStr}</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${provBadge}
+            <span class="mini-event-time">${timeStr}</span>
+          </div>
         </div>
         <div class="mini-event-identity" title="${escapeHtml(identity)}">${escapeHtml(identity)}</div>
         <div class="mini-event-desc">${escapeHtml(desc)}</div>
@@ -223,7 +237,7 @@ function renderAuthorizationsTable() {
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state-loading">No matching authorization decisions found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state-loading">No matching authorization decisions found.</td></tr>`;
     return;
   }
 
@@ -233,6 +247,7 @@ function renderAuthorizationsTable() {
     const badgeText = isAllow ? 'ALLOW' : 'DENY';
     const action = e.action || 'GET';
     const path = e.path || '/';
+    const provBadge = e.isGenuine ? '<span class="badge genuine">GENUINE</span>' : '<span class="badge simulated">SIMULATED</span>';
 
     return `
       <tr>
@@ -243,6 +258,7 @@ function renderAuthorizationsTable() {
         <td><span class="badge neutral">${escapeHtml(action)}</span></td>
         <td class="font-mono">${escapeHtml(path)}</td>
         <td>${escapeHtml(e.reason || 'OPA Policy Evaluation')}</td>
+        <td>${provBadge}</td>
       </tr>
     `;
   }).join('');
@@ -256,9 +272,8 @@ function renderCertificatesTable() {
   if (!tbody) return;
 
   const certEvents = state.events.filter(e => e.eventType === 'key_certificate_rotation').reverse();
-  
+
   if (certEvents.length === 0) {
-    // Show static state
     tbody.innerHTML = state.activeCertificates.map(c => `
       <tr>
         <td><strong>${escapeHtml(c.service)}</strong></td>
@@ -305,12 +320,15 @@ function renderEventsTable() {
 
   const categoryFilter = document.getElementById('filter-event-category')?.value || 'all';
   const severityFilter = document.getElementById('filter-severity')?.value || 'all';
+  const sourceFilter = document.getElementById('filter-event-source')?.value || 'all';
   const query = (document.getElementById('events-search')?.value || '').toLowerCase();
 
   const allEvents = [...state.events].reverse();
   const filtered = allEvents.filter(e => {
     if (categoryFilter !== 'all' && e.category !== categoryFilter) return false;
     if (severityFilter !== 'all' && e.severity !== severityFilter) return false;
+    if (sourceFilter === 'genuine' && e.isGenuine !== true) return false;
+    if (sourceFilter === 'simulated' && e.isGenuine === true) return false;
     if (query) {
       const match = `${e.eventType} ${e.sourceIdentity} ${e.serviceIdentity} ${e.reason} ${e.details}`.toLowerCase();
       if (!match.includes(query)) return false;
@@ -319,7 +337,7 @@ function renderEventsTable() {
   });
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty-state-loading">No events match the selected filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state-loading">No events match the selected filters.</td></tr>`;
     return;
   }
 
@@ -329,10 +347,12 @@ function renderEventsTable() {
     const identity = e.sourceIdentity || e.serviceIdentity || e.clientIp || '--';
     const decision = e.decision !== undefined ? (e.decision ? '<span class="badge success">ALLOW</span>' : '<span class="badge danger">DENY</span>') : (e.status ? `<span class="badge purple">${e.status}</span>` : '--');
     const desc = e.reason || e.details || e.failureReason || '--';
+    const provBadge = e.isGenuine ? '<span class="badge genuine">GENUINE</span>' : '<span class="badge simulated">SIMULATED</span>';
 
     return `
       <tr>
         <td class="font-mono">${formatTimestamp(e.timestamp)}</td>
+        <td>${provBadge}</td>
         <td><span class="badge ${sevClass}">${sev}</span></td>
         <td><span class="badge neutral">${escapeHtml(e.category || 'general')}</span></td>
         <td><strong>${formatEventType(e.eventType)}</strong></td>
@@ -354,106 +374,180 @@ function setupSimulationControls() {
   // 1. Authorized Request
   document.getElementById('btn-sim-allow')?.addEventListener('click', () => {
     animatePacket('path-fe-be', '#10b981');
-    const event = {
-      timestamp: new Date().toISOString(),
-      eventType: 'allowed_request',
-      category: 'authorization',
-      severity: 'INFO',
-      sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-      destinationService: 'backend',
-      action: 'GET',
-      path: '/api/v1/resource',
-      policy: 'authz',
-      decision: true,
-      reason: 'Access granted: approved frontend identity'
-    };
-    pushEvent(event);
-    showToast('Authorized Request Sent', 'OPA ext_authz evaluated: ALLOW (200 OK)', 'success');
+    fetch('/api/evaluate-opa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        caller_identity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        destination: 'backend',
+        action: 'GET',
+        path: '/api/v1/resource'
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      loadTelemetryData(false);
+      showToast('Authorized Request Verified', `Genuine OPA Decision: ALLOW (${data.reason}) [${data.eval_duration_ms}ms]`, 'success');
+    })
+    .catch(() => {
+      const fallbackEvent = {
+        timestamp: new Date().toISOString(),
+        eventType: 'allowed_request',
+        category: 'authorization',
+        severity: 'INFO',
+        sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        destinationService: 'backend',
+        action: 'GET',
+        path: '/api/v1/resource',
+        decision: true,
+        isGenuine: false,
+        reason: 'Access granted: approved frontend identity'
+      };
+      pushEvent(fallbackEvent);
+      showToast('Authorized Request Sent', 'OPA ext_authz evaluated: ALLOW (200 OK)', 'success');
+    });
   });
 
   // 2. Lateral Movement to Database (Denied)
   document.getElementById('btn-sim-lateral')?.addEventListener('click', () => {
     animatePacket('path-fe-db', '#f43f5e');
-    const event = {
-      timestamp: new Date().toISOString(),
-      eventType: 'denied_request',
-      category: 'authorization',
-      severity: 'WARNING',
-      sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-      destinationService: 'database',
-      action: 'GET',
-      path: '/database/customers',
-      policy: 'authz',
-      decision: false,
-      reason: 'Access denied: unapproved identity or unauthorized destination'
-    };
-    pushEvent(event);
-    showToast('Lateral Movement Blocked', 'Access denied to microsegmented database (403 Forbidden)', 'danger');
+    fetch('/api/evaluate-opa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        caller_identity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        destination: 'database',
+        action: 'GET',
+        path: '/database/credentials'
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      loadTelemetryData(false);
+      showToast('Lateral Movement Blocked', `Genuine OPA Decision: DENY (${data.reason}) [${data.eval_duration_ms}ms]`, 'danger');
+    })
+    .catch(() => {
+      const fallbackEvent = {
+        timestamp: new Date().toISOString(),
+        eventType: 'denied_request',
+        category: 'authorization',
+        severity: 'WARNING',
+        sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        destinationService: 'database',
+        action: 'GET',
+        path: '/database/credentials',
+        decision: false,
+        isGenuine: false,
+        reason: 'Access denied: lateral movement to database prevented'
+      };
+      pushEvent(fallbackEvent);
+      showToast('Lateral Movement Blocked', 'Access denied to microsegmented database (403 Forbidden)', 'danger');
+    });
   });
 
   // 3. Rogue Attacker Workload SVID (Denied)
   document.getElementById('btn-sim-rogue')?.addEventListener('click', () => {
     animatePacket('path-attacker-be', '#f43f5e');
-    const event = {
-      timestamp: new Date().toISOString(),
-      eventType: 'denied_request',
-      category: 'authorization',
-      severity: 'WARNING',
-      sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/unapproved-attacker',
-      destinationService: 'backend',
-      action: 'GET',
-      path: '/api/v1/resource',
-      policy: 'authz',
-      decision: false,
-      reason: 'Access denied: unapproved identity or unauthorized destination'
-    };
-    pushEvent(event);
-    showToast('Rogue SVID Rejected', 'OPA blocked unapproved workload identity (403 Forbidden)', 'danger');
+    fetch('/api/evaluate-opa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        caller_identity: 'spiffe://pqzt.local/ns/demo/sa/unapproved-attacker',
+        destination: 'backend',
+        action: 'GET',
+        path: '/api/v1/resource'
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      loadTelemetryData(false);
+      showToast('Rogue SVID Rejected', `Genuine OPA Decision: DENY (${data.reason}) [${data.eval_duration_ms}ms]`, 'danger');
+    })
+    .catch(() => {
+      const fallbackEvent = {
+        timestamp: new Date().toISOString(),
+        eventType: 'denied_request',
+        category: 'authorization',
+        severity: 'WARNING',
+        sourceIdentity: 'spiffe://pqzt.local/ns/demo/sa/unapproved-attacker',
+        destinationService: 'backend',
+        action: 'GET',
+        path: '/api/v1/resource',
+        decision: false,
+        isGenuine: false,
+        reason: 'Access denied: unapproved identity or unauthorized destination'
+      };
+      pushEvent(fallbackEvent);
+      showToast('Rogue SVID Rejected', 'OPA blocked unapproved workload identity (403 Forbidden)', 'danger');
+    });
   });
 
   // 4. Dynamic Certificate Rotation (Vault SDS)
   document.getElementById('btn-sim-rotate')?.addEventListener('click', () => {
     animatePacket('path-vault-sds', '#8b5cf6');
-    state.certVersionCounter += 1;
-    const v = state.certVersionCounter;
-    const newSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    
-    const event = {
-      timestamp: new Date().toISOString(),
-      eventType: 'key_certificate_rotation',
-      category: 'crypto_lifecycle',
-      severity: 'INFO',
-      serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-      rotationType: 'scheduled_rotation',
-      algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
-      validFrom: new Date().toISOString(),
-      validUntil: new Date(Date.now() + 43200000).toISOString(),
-      serialNumber: newSerial,
-      version: v,
-      status: 'SUCCESS',
-      details: `Vault PKI dynamically rotated certificate to Version ${v} (Envoy SDS Hot-Swap)`
-    };
-    pushEvent(event);
-    showToast('Certificate Rotated', `Vault PKI issued V${v} leaf cert without downtime`, 'warning');
+    fetch('/api/vault/issue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ common_name: 'frontend', is_server: false })
+    })
+    .then(r => r.json())
+    .then(data => {
+      loadTelemetryData(false);
+      showToast('Certificate Rotated', `Vault PKI issued version ${data.version} certificate (${data.backend})`, 'warning');
+    })
+    .catch(() => {
+      state.certVersionCounter += 1;
+      const v = state.certVersionCounter;
+      const newSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      const fallbackEvent = {
+        timestamp: new Date().toISOString(),
+        eventType: 'key_certificate_rotation',
+        category: 'crypto_lifecycle',
+        severity: 'INFO',
+        serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        rotationType: 'scheduled_rotation',
+        algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
+        serialNumber: newSerial,
+        version: v,
+        status: 'SUCCESS',
+        isGenuine: false,
+        details: `Vault PKI dynamically rotated certificate to Version ${v} (Envoy SDS Hot-Swap)`
+      };
+      pushEvent(fallbackEvent);
+      showToast('Certificate Rotated', `Vault PKI issued V${v} leaf cert without downtime`, 'warning');
+    });
   });
 
   // 5. Emergency Certificate Revocation (CRL)
   document.getElementById('btn-sim-revoke')?.addEventListener('click', () => {
-    const revokedSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    const event = {
-      timestamp: new Date().toISOString(),
-      eventType: 'key_certificate_rotation',
-      category: 'crypto_lifecycle',
-      severity: 'WARNING',
-      serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-      rotationType: 'emergency_revocation',
-      algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
-      serialNumber: revokedSerial,
-      status: 'REVOKED',
-      details: `Emergency CRL revocation enforced in Vault (simulated_key_compromise)`
-    };
-    pushEvent(event);
-    showToast('Serial Revoked', 'Emergency revocation registered in Vault CRL', 'warning');
+    fetch('/api/vault/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(data => {
+      loadTelemetryData(false);
+      showToast('Serial Revoked', `Emergency revocation registered in Vault CRL (${data.serial})`, 'warning');
+    })
+    .catch(() => {
+      const revokedSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      const fallbackEvent = {
+        timestamp: new Date().toISOString(),
+        eventType: 'key_certificate_rotation',
+        category: 'crypto_lifecycle',
+        severity: 'WARNING',
+        serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
+        rotationType: 'emergency_revocation',
+        algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
+        serialNumber: revokedSerial,
+        status: 'REVOKED',
+        isGenuine: false,
+        details: 'Emergency CRL revocation enforced in Vault (simulated_key_compromise)'
+      };
+      pushEvent(fallbackEvent);
+      showToast('Serial Revoked', 'Emergency revocation registered in Vault CRL', 'warning');
+    });
   });
 }
 
@@ -544,15 +638,17 @@ function setupModals() {
     runSuite('service_path');
   });
 
-  // Run Vault PKI & Rotation Suite (11 Tests)
+  // Run Vault PKI & Rotation Suite (14 Tests)
   document.getElementById('btn-exec-vault-tests')?.addEventListener('click', () => {
     runSuite('vault_pki');
   });
 }
 
 async function runSuite(suiteName) {
-  const terminal = document.getElementById('test-terminal-output');
-  terminal.textContent = `[+] Initiating execution of ${suiteName} suite...\nConnecting to backend test runner...`;
+  const outputEl = document.getElementById('test-terminal-output');
+  if (!outputEl) return;
+
+  outputEl.textContent = `[+] Initiating automated test suite: ${suiteName}...\n[+] Running child process inside workspace...\n`;
 
   try {
     const resp = await fetch('/api/run-tests', {
@@ -560,43 +656,43 @@ async function runSuite(suiteName) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ suite: suiteName })
     });
-    
+
     if (resp.ok) {
-      const data = await resp.json();
-      terminal.textContent = data.output || 'Execution complete.';
-      loadTelemetryData(true);
+      const res = await resp.json();
+      outputEl.textContent = res.output;
+      if (res.exit_code === 0) {
+        showToast('Tests Passed', `${suiteName} suite completed with 100% pass rate`, 'success');
+        loadTelemetryData(false);
+      } else {
+        showToast('Tests Failed', `${suiteName} suite exited with code ${res.exit_code}`, 'danger');
+      }
     } else {
-      terminal.textContent = `[-] Server returned HTTP ${resp.status}.\nRunning fallback verified output display:`;
-      terminal.textContent += `\n[PASS] Verified 100% test pass recorded in repository test suites.`;
+      outputEl.textContent += `[-] Server responded with error ${resp.status}: ${resp.statusText}\n`;
     }
   } catch (err) {
-    terminal.textContent = `[+] Executing client verification:\nAll 15 Service Path tests and 11 Vault PKI tests are verified PASS.\nExit code: 0 (100% PASS)`;
+    outputEl.textContent += `[-] Failed triggering suite: ${err.message}\n`;
   }
 }
 
 function viewEventDetails(eventIndex) {
-  const ev = state.events[eventIndex];
-  if (!ev) return;
+  const event = state.events[eventIndex];
+  if (!event) return;
 
-  state.selectedEventJson = ev;
+  state.selectedEventJson = event;
   const modal = document.getElementById('modal-json-backdrop');
-  const codeEl = document.querySelector('#modal-json-content code');
-  if (codeEl) {
-    codeEl.textContent = JSON.stringify(ev, null, 2);
+  const codeEl = document.getElementById('modal-json-content')?.querySelector('code');
+
+  if (codeEl && modal) {
+    codeEl.textContent = JSON.stringify(event, null, 2);
+    modal.style.display = 'flex';
   }
-  if (modal) modal.style.display = 'flex';
 }
 
-// Window exposure for inline onclick
-window.viewEventDetails = viewEventDetails;
-
-// ==============================================================================
-// Filters
-// ==============================================================================
 function setupFilters() {
   document.getElementById('authz-search')?.addEventListener('input', renderAuthorizationsTable);
   document.getElementById('filter-event-category')?.addEventListener('change', renderEventsTable);
   document.getElementById('filter-severity')?.addEventListener('change', renderEventsTable);
+  document.getElementById('filter-event-source')?.addEventListener('change', renderEventsTable);
   document.getElementById('events-search')?.addEventListener('input', renderEventsTable);
 }
 
@@ -605,32 +701,34 @@ function setupFilters() {
 // ==============================================================================
 function showToast(title, message, type = 'info') {
   const container = document.getElementById('toast-container');
-  if (!container) return;
+  if (!container) {
+    const div = document.createElement('div');
+    div.id = 'toast-container';
+    div.className = 'toast-container';
+    document.body.appendChild(div);
+  }
 
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
+  toast.className = `toast-item toast-${type}`;
   toast.innerHTML = `
-    <div>
-      <div style="font-weight: 700;">${escapeHtml(title)}</div>
-      <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">${escapeHtml(message)}</div>
-    </div>
+    <div class="toast-title">${escapeHtml(title)}</div>
+    <div class="toast-msg">${escapeHtml(message)}</div>
   `;
 
-  container.appendChild(toast);
+  document.getElementById('toast-container').appendChild(toast);
+
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s ease';
-    setTimeout(() => {
-      if (toast.parentNode) container.removeChild(toast);
-    }, 300);
-  }, 3500);
+    toast.style.transform = 'translateY(10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 function formatTimestamp(isoStr) {
-  if (!isoStr) return '--:--:--';
+  if (!isoStr) return '--';
   try {
     const d = new Date(isoStr);
-    return d.toTimeString().split(' ')[0] + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    return d.toISOString().replace('T', ' ').slice(0, 19);
   } catch {
     return isoStr;
   }
@@ -638,12 +736,14 @@ function formatTimestamp(isoStr) {
 
 function formatEventType(type) {
   if (!type) return 'Event';
-  return type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return type
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
+  if (typeof str !== 'string') return String(str || '');
+  return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

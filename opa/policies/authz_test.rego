@@ -112,4 +112,38 @@ test_deny_envoy_mutating_action if {
     }
 }
 
+# Test case 11: Approved backend identity allowed to access database
+test_allow_backend_database_access if {
+    allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/backend",
+        "destination": "database",
+        "action": "GET",
+    }
+}
 
+# Test case 12: Cluster backend identity allowed to access database
+test_allow_cluster_backend_database if {
+    allow with input as {
+        "identity": "spiffe://cluster.local/ns/mesh/sa/backend-service",
+        "destination": "database",
+        "action": "read",
+    }
+}
+
+# Test case 13: Backend mutating action to database denied (least-privilege read only)
+test_deny_backend_mutating_database if {
+    not allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/backend",
+        "destination": "database",
+        "action": "DELETE",
+    }
+}
+
+# Test case 14: Backend attempting reverse traversal to frontend denied
+test_deny_backend_reverse_traversal if {
+    not allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/backend",
+        "destination": "frontend",
+        "action": "GET",
+    }
+}

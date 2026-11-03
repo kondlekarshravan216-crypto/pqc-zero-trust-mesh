@@ -1,4 +1,4 @@
-# Team Status — Current Progress (Day 6)
+# Team Status — Current Progress (Month 2 Day 1)
 
 ## Project
 Post-Quantum Zero-Trust Microsegmentation Mesh
@@ -34,6 +34,10 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [x] Day 6: Coordinated Vault PKI engine setup, automated certificate renewal, dynamic rotation, and emergency CRL revocation (`tests/test_vault_pki.py`, 11/11 PASS)
 - [x] Day 6: Integrated OPA decisions with the live service request path via `envoy.filters.http.ext_authz` and end-to-end mTLS interception (`tests/test_service_path.py`, 15/15 PASS)
 - [x] Day 6: Built real-time visual security dashboard (`dashboard/`) consuming verified authorization and certificate events with interactive mesh topology and simulation console
+- [x] Month 2 Day 1: Connected certificate issuance and emergency revocation to actual Vault PKI HTTP REST API (`VaultAPIClient` in `vault/scripts/vault_pki_coordinator.py`) with dual-mode architecture (14/14 tests passing)
+- [x] Month 2 Day 1: Expanded OPA policies and test suite to 28/28 passing (18 Rego unit tests + 10 contract tests) enforcing three-tier zero-trust microsegmentation
+- [x] Month 2 Day 1: Upgraded dashboard server and UI to distinguish genuine security events from simulated events, with live OPA policy evaluation endpoint (`/api/evaluate-opa`) and provenance badges
+- [x] Month 2 Day 1: Published comprehensive integration status report `docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md`
 
 ## Pending Work
 - [ ] Add/verify all GitHub collaborators
@@ -65,13 +69,14 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Next: Envoy live container validation and SDS integration with Vault.
 
 ### Member 5 — Manideep (OPA, Vault & Dashboard)
-- Completed (Day 5 & Day 6):
-  - Validated OPA ALLOW/DENY policies and integrated authorization directly with the live service request path via `envoy.filters.http.ext_authz` and end-to-end mTLS interception.
-  - Tested authorized vs. unauthorized requests (24 OPA unit/eval tests + 15 service path tests, 100% pass), verifying rejection of unapproved SVIDs, lateral movement to database, unauthorized HTTP verbs, and invalid/expired/untrusted certs.
-  - Coordinated HashiCorp Vault PKI engine setup (`vault/scripts/vault_pki_coordinator.py`, `vault/policies/mesh-pki.hcl`) and verified automated certificate renewal, dynamic rotation (Envoy SDS model), and emergency CRL revocation with 11/11 tests passing (`tests/test_vault_pki.py`, `tests/test_vault_pki.ps1`).
-  - Built state-of-the-art interactive Observability & Security Dashboard (`dashboard/`) with real-time telemetry API (`dashboard/server.py`), live SVG mesh topology with packet flow animation, certificate lifecycle tracker, audit log inspector, and live simulation controls.
-- Next: Prepare pull request and assist with team end-to-end integration with Kubernetes NetworkPolicies and PQC hybrid key exchange.
-
+- Completed (Month 2 Day 1):
+  - Reviewed OPA authorization policies and upgraded `authz.rego` to enforce full 3-tier zero-trust microsegmentation (`frontend` -> `backend` -> `database`) with granular rejection reasons (28/28 tests passing).
+  - Verified 15 live service request vectors in `tests/test_service_path.py` across mTLS and OPA `ext_authz`.
+  - Audited Vault PKI implementation, identifying actual Vault integration components vs Python simulation fallbacks.
+  - Connected certificate issuance, automated renewal, and emergency revocation to the actual Vault PKI HTTP REST API (`VaultAPIClient` in `vault/scripts/vault_pki_coordinator.py`) with a dual-mode engine architecture (14/14 tests passing).
+  - Upgraded the security observability dashboard (`dashboard/server.py`, `dashboard/js/app.js`, `dashboard/index.html`) to execute genuine OPA evaluations and display verified telemetry with provenance badges and filters.
+  - Authored comprehensive integration status report: `docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md`.
+- Next: Assist with team end-to-end cross-component integration testing on develop.
 
 ## Integration Rules
 - Keep main stable; develop is the integration branch.

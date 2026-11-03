@@ -13,7 +13,15 @@ approved_frontend_identities := {
     "spiffe://pqzt.local/ns/demo/sa/frontend",
 }
 
-# Permitted actions for frontend -> backend communication
+# Approved backend service identities permitted to access database services
+approved_backend_identities := {
+    "backend",
+    "backend-service",
+    "spiffe://cluster.local/ns/mesh/sa/backend-service",
+    "spiffe://pqzt.local/ns/demo/sa/backend",
+}
+
+# Permitted actions for frontend -> backend and backend -> database communication
 read_actions := {"GET", "get", "read", "HEAD", "head"}
 
 # Extracted Caller Identity (supports direct input.identity, input.source, or Envoy attributes)
@@ -46,20 +54,44 @@ request_action := input.action if {
     not input.action
 } else := ""
 
-# Allow rule: verified frontend identity accessing backend service with read action
+# Helper to check if caller identity belongs to any approved mesh service
+is_approved_identity if {
+    approved_frontend_identities[caller_identity]
+}
+is_approved_identity if {
+    approved_backend_identities[caller_identity]
+}
+
+# Rule 1: Verified frontend identity accessing backend service with read action
 allow if {
     approved_frontend_identities[caller_identity]
     target_destination == "backend"
     read_actions[request_action]
 }
 
-# Decision reason metadata for audit logging and dashboard telemetry
-reason := "Access granted: approved frontend identity" if {
-    allow
+# Rule 2: Verified backend identity accessing database service with read action
+allow if {
+    approved_backend_identities[caller_identity]
+    target_destination == "database"
+    read_actions[request_action]
 }
 
-reason := "Access denied: unapproved identity or unauthorized destination" if {
+# Decision reason metadata for audit logging and dashboard telemetry
+reason := "Access granted: approved frontend identity accessing backend" if {
+    approved_frontend_identities[caller_identity]
+    target_destination == "backend"
+    read_actions[request_action]
+} else := "Access granted: approved backend identity accessing database" if {
+    approved_backend_identities[caller_identity]
+    target_destination == "database"
+    read_actions[request_action]
+} else := "Access denied: lateral movement to database prevented" if {
+    caller_identity != ""
+    target_destination == "database"
+    not approved_backend_identities[caller_identity]
+} else := "Access denied: unauthorized mutating HTTP action" if {
+    is_approved_identity
+    not read_actions[request_action]
+} else := "Access denied: unapproved identity or unauthorized destination" if {
     not allow
 }
-
-

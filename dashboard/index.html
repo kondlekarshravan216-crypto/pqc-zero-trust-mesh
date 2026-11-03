@@ -94,6 +94,11 @@
             <span class="pill-label">Vault PKI: Active (pki_mesh)</span>
           </div>
 
+          <div class="status-pill" id="telemetry-provenance-pill">
+            <span class="pulse-dot emerald"></span>
+            <span class="pill-label" id="val-provenance-pill">Telemetry: 100% Genuine</span>
+          </div>
+
           <button class="btn btn-outline" id="btn-refresh" title="Reload audit telemetry">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"></path>
@@ -384,6 +389,7 @@
                     <th>Action</th>
                     <th>Resource Path</th>
                     <th>OPA Reason / Rule</th>
+                    <th>Provenance</th>
                   </tr>
                 </thead>
                 <tbody id="tbody-authorizations">
@@ -504,6 +510,11 @@
                   <option value="WARNING">WARNING</option>
                   <option value="INFO">INFO</option>
                 </select>
+                <select class="select-filter" id="filter-event-source">
+                  <option value="all">All Provenance</option>
+                  <option value="genuine">Genuine / Verified Only</option>
+                  <option value="simulated">Simulated / Synthetic Only</option>
+                </select>
                 <input type="text" class="search-input" id="events-search" placeholder="Filter audit events...">
               </div>
             </div>
@@ -513,6 +524,7 @@
                 <thead>
                   <tr>
                     <th>Timestamp (UTC)</th>
+                    <th>Provenance</th>
                     <th>Severity</th>
                     <th>Category</th>
                     <th>Event Type</th>

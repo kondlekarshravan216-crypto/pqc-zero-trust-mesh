@@ -911,6 +911,8 @@ body.dark-theme::before {
 .badge.warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 .badge.purple { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); }
 .badge.neutral { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
+.badge.genuine { background: rgba(0, 240, 255, 0.15); color: #00f0ff; border: 1px solid rgba(0, 240, 255, 0.4); }
+.badge.simulated { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px dashed rgba(245, 158, 11, 0.4); }
 
 /* Certificate Overview Grid */
 .cert-overview-grid {
