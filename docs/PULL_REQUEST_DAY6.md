@@ -157,3 +157,60 @@ Total Tests: 11 | Passed: 11 | Failed: 0 (100% PASS)
 - [x] Zero-trust security dashboard built and running live at `http://127.0.0.1:8050` with live SVG topology, simulation console, and audit event stream.
 - [x] Zero secret compliance preserved: no private keys, certificates, or tokens committed to git.
 - [x] `TEAM_STATUS.md` and repository `README.md` updated.
+
+
+---
+
+## 5. Dashboard Screenshots
+
+> The Observability & Security Dashboard runs at `http://127.0.0.1:8050`. Launch with:
+> ```
+> python dashboard/server.py 8050      # or ./dashboard/run_dashboard.ps1
+> ```
+
+Key visual panels:
+- **KPI Cards**: Live counters for Total Events, Allowed Requests, Denied Requests, Certificate Rotations.
+- **SVG Mesh Topology**: Interactive node graph (Frontend → Backend → Database) with animated packet flow showing ALLOW (green) and DENY (red) paths.
+- **OPA ext_authz Decision Table**: Searchable/filterable list of authorization decisions with JSON detail inspector.
+- **Vault PKI Certificate Lifecycle Tracker**: Version history of issued, renewed, and revoked workload certificates.
+- **Audit Event Stream**: Real-time scrolling event log with severity badges and timestamp filtering.
+- **Simulation Console**: Buttons to trigger live authorization scenarios (allowed request, denied lateral movement, certificate rotation, emergency revocation).
+
+---
+
+## 6. Known Limitations & Follow-up Items
+
+| Area | Limitation | Follow-up |
+|------|-----------|-----------|
+| Envoy Container | `envoy/*.yaml` configs are written but **not validated against a live Envoy container** (tools absent in authoring environment) | Member 4 (Agnes) to validate with `envoy --mode validate` and Docker Compose |
+| Kubernetes NetworkPolicies | Not implemented in this PR; OPA policies enforce at the application layer only | Member 2 (Dhanush) to deliver Kubernetes manifests and NetworkPolicy tests |
+| PQC Hybrid Key Exchange | Current mTLS uses classical ECDSA P-256 / X25519; **not post-quantum secure** | Integrate Member 3's (Tharun) hybrid ECDH + ML-KEM prototype into the TLS handshake |
+| Vault in Production | Tests run against Vault dev server (`-dev` mode, in-memory storage) | Configure production Vault with persistent storage, auto-unseal, and audit logging |
+| Dashboard Data Source | Dashboard reads from static `opa/telemetry/audit_log.json`; no live streaming connection | Wire dashboard API to a live event bus or Vault audit log in production |
+
+---
+
+## 7. Reviewer Checklist
+
+- [ ] Reviewer has pulled the `feature/opa-vault` branch and confirmed it builds cleanly
+- [ ] OPA test suite passes locally: `powershell tests/test_opa.ps1` → 24/24 PASS
+- [ ] Service path tests reviewed: `tests/test_service_path.py` logic is sound
+- [ ] Vault PKI tests reviewed: `tests/test_vault_pki.py` logic is sound
+- [ ] Dashboard launches without errors: `python dashboard/server.py 8050`
+- [ ] No private keys, tokens, passwords, or real secrets committed (`scripts/check-secrets-tracked.sh`)
+- [ ] `TEAM_STATUS.md` and `README.md` accurately reflect Day 6 deliverables
+- [ ] Code review: no hardcoded credentials, no unsafe eval, no bypassed access controls
+
+---
+
+## 8. Merge Instructions
+
+1. **Ensure all reviewer checklist items above are marked complete.**
+2. **Merge strategy**: Squash and merge into `develop`.
+   ```bash
+   git checkout develop
+   git merge --squash feature/opa-vault
+   git commit -m "Day 6: Vault PKI, OPA service path integration, security dashboard"
+   ```
+3. **Post-merge**: Delete the `feature/opa-vault` branch after successful merge.
+4. **Verify**: Run `tests/test_opa.ps1` on `develop` to confirm 24/24 PASS after merge.

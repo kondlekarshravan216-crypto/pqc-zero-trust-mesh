@@ -22,7 +22,7 @@ $totalTests = 0
 $passedTests = 0
 $failedTests = 0
 
-function Run-OpaEvalTest {
+function Invoke-OpaEvalTest {
     param (
         [string]$TestName,
         [string]$PolicyPath,
@@ -73,7 +73,7 @@ try {
 Write-Host "`n--- Part 2: Integration Contract Tests (tests/opa/*.json) ---" -ForegroundColor Cyan
 
 # Test 1: Frontend to Backend (Allow)
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Contract Test 1: Frontend -> Backend [ALLOW]" `
     -PolicyPath "opa/policies/authorization.rego" `
     -InputPath "tests/opa/allow-frontend-backend.json" `
@@ -81,7 +81,7 @@ Run-OpaEvalTest `
     -ExpectedValue $true
 
 # Test 2: Backend to Database (Allow)
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Contract Test 2: Backend -> Database [ALLOW]" `
     -PolicyPath "opa/policies/authorization.rego" `
     -InputPath "tests/opa/allow-backend-database.json" `
@@ -89,7 +89,7 @@ Run-OpaEvalTest `
     -ExpectedValue $true
 
 # Test 3: Frontend to Database (Deny - lateral movement prevented)
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Contract Test 3: Frontend -> Database [DENY]" `
     -PolicyPath "opa/policies/authorization.rego" `
     -InputPath "tests/opa/deny-frontend-database.json" `
@@ -97,7 +97,7 @@ Run-OpaEvalTest `
     -ExpectedValue $false
 
 # Test 4: Unknown to Backend (Deny - unapproved source)
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Contract Test 4: Unknown -> Backend [DENY]" `
     -PolicyPath "opa/policies/authorization.rego" `
     -InputPath "tests/opa/deny-unknown-backend.json" `
@@ -106,14 +106,14 @@ Run-OpaEvalTest `
 
 Write-Host "`n--- Part 3: Identity Tests (opa/inputs/*.json) ---" -ForegroundColor Cyan
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Identity Test 1: Simple Verified Identity [ALLOW]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/allowed.json" `
     -Query "data.authz.allow" `
     -ExpectedValue $true
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Identity Test 2: Simple Unapproved Identity [DENY]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/denied.json" `
@@ -122,14 +122,14 @@ Run-OpaEvalTest `
 
 Write-Host "`n--- Part 4: SPIFFE SVID Request Envelope Tests (opa/tests/*.json) ---" -ForegroundColor Cyan
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "SPIFFE SVID Test 1: Full SVID URI Allowed [ALLOW]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/tests/input_allowed.json" `
     -Query "data.authz.allow" `
     -ExpectedValue $true
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "SPIFFE SVID Test 2: Rogue SVID URI Denied [DENY]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/tests/input_denied.json" `
@@ -138,14 +138,14 @@ Run-OpaEvalTest `
 
 Write-Host "`n--- Part 5: Mesh Integration Identity Tests (opa/inputs/demo_*.json) ---" -ForegroundColor Cyan
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Mesh Identity Test 1: Demo Frontend SPIFFE URI Allowed [ALLOW]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/demo_frontend_allowed.json" `
     -Query "data.authz.allow" `
     -ExpectedValue $true
 
-Run-OpaEvalTest `
+Invoke-OpaEvalTest `
     -TestName "Mesh Identity Test 2: Demo Unapproved SPIFFE URI Denied [DENY]" `
     -PolicyPath "opa/policies/authz.rego" `
     -InputPath "opa/inputs/demo_unapproved_denied.json" `

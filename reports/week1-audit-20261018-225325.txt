@@ -1,0 +1,53 @@
+=== WEEK 1 COMPLETION AUDIT ===
+Sunday 18 October 2026 10:53:25 PM IST
+
+=== 1. HYBRID ECDH + ML-KEM ===
+.....                                                                    [100%]
+5 passed in 0.22s
+PQC_TEST_EXIT_CODE=0
+
+=== 2. KUBERNETES / ZERO-TRUST ===
+error: current-context is not set
+E1018 22:53:26.932854    2599 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:26.940467    2599 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:26.947109    2599 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:26.949788    2599 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:26.952029    2599 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+E1018 22:53:27.018280    2604 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:27.022206    2604 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:27.026202    2604 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:27.030343    2604 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+E1018 22:53:27.034059    2604 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"http://localhost:8080/api?timeout=32s\": dial tcp [::1]:8080: connect: connection refused"
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+--- Kubernetes manifests ---
+
+=== 3. CA / X.509 / PQC ===
+OpenSSL 3.6.2 7 Apr 2026 (Library: OpenSSL 3.6.2 7 Apr 2026)
+./.venv/lib/python3.13/site-packages/certifi/cacert.pem
+./.venv/lib/python3.13/site-packages/pip/_vendor/certifi/cacert.pem
+--- PQC and certificate references ---
+HEAD:README.md:2:Enterprise-oriented prototype implementing a Post-Quantum Zero-Trust Kubernetes microsegmentation mesh with hybrid ECDH + ML-KEM, mTLS, OPA policy enforcement, secret management, and security observability
+HEAD:TEAM.md:24:- ECDH and ML-KEM
+HEAD:TEAM_STATUS.md:28:- [ ] Implement and test ECDH + ML-KEM hybrid key establishment
+HEAD:docs/architecture/architecture-v1.md:12:- ECDH + ML-KEM: Hybrid session key establishment.
+HEAD:docs/reviews/agnes-envoy-review-2026-10-12.md:35:- The local OpenSSL PQC capability probe reported ML-KEM/Kyber
+HEAD:docs/reviews/integration-readiness-2026-10-14.md:22:- Required evidence: ECDH and ML-KEM integration, matching shared-secret tests,
+HEAD:docs/reviews/integration-readiness-2026-10-14.md:24:- ML-KEM is a key-encapsulation mechanism, not a digital-signature algorithm.
+HEAD:pqc/hybrid_kem.py:1:"""Hybrid X25519 + ML-KEM-768 key establishment prototype."""
+HEAD:pqc/hybrid_kem.py:8:PROTOCOL = b"PQZT-HYBRID-X25519-ML-KEM-768-v1"
+HEAD:pqc/hybrid_kem.py:20:    """Generate responder X25519 and ML-KEM key pairs."""
+HEAD:pqc/hybrid_kem.py:29:        raise ValueError("Invalid ML-KEM public key length")
+HEAD:pqc/hybrid_kem.py:53:        raise ValueError("Invalid ML-KEM ciphertext length")
+
+=== WORKTREE PRESERVATION CHECK ===
+## feature/tharun-hybrid-kem-implementation...origin/feature/tharun-hybrid-kem-implementation
+ M TEAM_STATUS.md
+?? gateway/
+?? hybrid-kem-test-results.txt
+?? pqc/__pycache__/
+?? reports/
+?? tests/__pycache__/
+?? tests/pqc/__pycache__/
+
+Audit saved to reports/week1-audit-20261018-225325.txt

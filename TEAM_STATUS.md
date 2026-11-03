@@ -1,4 +1,4 @@
-# Team Status — Current Progress (Day 4)
+# Team Status — Current Progress (Day 6)
 
 ## Project
 Post-Quantum Zero-Trust Microsegmentation Mesh
@@ -40,7 +40,8 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [ ] Decide shared integration environment
 - [ ] Review and merge OPA & Vault feature branch into develop via pull request
 - [ ] Implement and test Kubernetes NetworkPolicies (Member 2 — Dhanush)
-- [ ] Implement and test ECDH + ML-KEM hybrid key establishment (Member 3 — Tharun)
+- [x] Implement and test ECDH + ML-KEM hybrid key establishment — prototype implemented, 5 tests passed (Member 3 — Tharun)
+  - [ ] Security review, authenticated peer verification, and end-to-end Envoy/mTLS integration
 - [ ] Configure live Envoy container validation and SDS dynamic certificate delivery (Member 4 — Agnes)
 - [ ] Integrate components and run end-to-end security tests
 
@@ -55,8 +56,9 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Next: Submit Kubernetes manifests and NetworkPolicy test evidence.
 
 ### Member 3 — Tharun (PQC & Cryptography)
-- Status: Assigned work reported as pending.
-- Next: Report available cryptographic libraries and demonstrate a key-establishment test.
+- Completed: Hybrid ECDH + ML-KEM prototype implemented; 5 focused tests passed using the project virtual environment.
+- Evidence: `hybrid-kem-test-results.txt`.
+- Next: Security review, authenticated peer verification, and end-to-end Envoy/mTLS integration.
 
 ### Member 4 — Agnes (CA, Certificates, Envoy & mTLS)
 - Completed: Local CA generation, certificate issuance, mTLS test suite with stand-in runner (24 PASS).
@@ -79,6 +81,10 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Record actual test results; do not claim unverified integration.
 
 ## Next Checkpoint
-Collect each member's files, branch/commit link, test results, and blockers. Review the OPA pull request and agree on component interfaces before end-to-end integration.
+Merge the OPA/Vault PR (`docs/PULL_REQUEST_DAY6.md`) into develop. Integrate Member 3's hybrid ECDH + ML-KEM prototype with the existing mTLS infrastructure. Begin cross-component end-to-end integration testing with Kubernetes NetworkPolicies and live Envoy containers.
 
+## Hybrid ECDH + ML-KEM — 18 Oct 2026
 
+- Status: Prototype implemented; 5 focused tests passed using the project virtual environment.
+- Evidence: `hybrid-kem-test-results.txt`.
+- Pending: Security review, authenticated peer verification, and end-to-end Envoy/mTLS integration.
