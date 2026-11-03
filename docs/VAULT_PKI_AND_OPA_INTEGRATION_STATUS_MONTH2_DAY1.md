@@ -239,3 +239,4 @@ In adherence to zero-trust documentation integrity, the following items are ackn
 | **Service Path Authz & Secret Lifecycle** | `tests/test_service_path.py` | 15 | 15 | 0 | **100%** |
 | **Vault PKI Setup, API & Rotation** | `tests/test_vault_pki.py` | 14 | 14 | 0 | **100%** |
 | **Total Comprehensive Suite** | — | **57** | **57** | **0** | **100% PASS** |
+
