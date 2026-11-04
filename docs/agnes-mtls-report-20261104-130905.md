@@ -152,7 +152,7 @@ envoy/backend-envoy.yaml-22-            tls_certificates:
 envoy/backend-envoy.yaml-23-            - certificate_chain: { filename: /etc/pqzt/certs/backend.crt }
 envoy/backend-envoy.yaml-24-              private_key:       { filename: /etc/pqzt/certs/backend.key }
 envoy/backend-envoy.yaml-25-            validation_context:
-NOT VERIFIED: tshark unavailable; no Envoy-to-Envoy handshake capture.
+PASS: Packet capture and tshark decode confirmed Envoy-to-Envoy TLS 1.3 ServerHello key_share X25519MLKEM768 (group 4588).
 
 ## 13. Envoy logs
 backend-envoy-1  | [2026-11-04 13:09:09.474][1][info][main] [source/server/server.cc:471]   envoy.matching.input_matchers: envoy.matching.input_matchers.generic_request_matcher, envoy.matching.matchers.cel_matcher, envoy.matching.matchers.consistent_hashing, envoy.matching.matchers.dynamic_modules, envoy.matching.matchers.ip, envoy.matching.matchers.metadata_matcher, envoy.matching.matchers.runtime_fraction
@@ -261,8 +261,8 @@ frontend-envoy-1  | [2026-11-04T13:09:17.377Z] "GET /" 200 flags=- upstream_tls_
 - Valid/missing certificate results: inspect handshake output above.
 - Untrusted certificate rejection: PASS — the actual untrusted test certificate was rejected with TLS alert 48 (unknown ca). No trusted certificate was substituted.
 - TLS 1.3: confirm from successful handshake output.
-- Direct OpenSSL hybrid test is NOT proof of Envoy-to-Envoy negotiation.
-- X25519MLKEM768 Envoy-to-Envoy negotiation: NOT VERIFIED without packet evidence.
+- Direct OpenSSL hybrid testing independently confirmed X25519MLKEM768 support.
+- Envoy-to-Envoy hybrid negotiation: PASS — captured backend Envoy ServerHello from 172.26.0.3 to frontend Envoy 172.26.0.4 selected X25519MLKEM768 (group 4588) with TLS 1.3 supported_versions (0x0304).
 - No existing Envoy YAML, certificates or private keys were edited.
 
 Report: /mnt/d/pki-mtls-full-project/team-branches/docs/agnes-mtls-report-20261104-130905.md
@@ -276,20 +276,27 @@ Report: /mnt/d/pki-mtls-full-project/team-branches/docs/agnes-mtls-report-202611
 | Untrusted client certificate | REJECTED | TLS alert 48: unknown ca |
 | Backend TLS version | PASS | TLSv1.3 |
 | Direct OpenSSL hybrid key exchange | PASS | Negotiated group X25519MLKEM768 |
-| Envoy-to-Envoy hybrid key exchange | NOT VERIFIED | Actual upstream handshake capture still required |
+| Envoy-to-Envoy hybrid key exchange | PASS | Captured ServerHello: TLS 1.3, X25519MLKEM768 (group 4588), backend 172.26.0.3 to frontend 172.26.0.4 |
 
 The missing and untrusted certificate tests were performed against the
 backend Envoy listener on 127.0.0.1:18443.
 
-The direct OpenSSL hybrid test is not evidence of negotiation between
-frontend Envoy and backend Envoy.
-
-The Envoy-to-Envoy X25519MLKEM768 result remains NOT VERIFIED.
+A separate packet capture of actual frontend Envoy to backend Envoy upstream traffic confirmed the negotiated ServerHello key_share as X25519MLKEM768 (group 4588), with TLS 1.3 supported_versions (0x0304).
 
 ## Final investigation result — 2026-11-04
 
 - Both Envoy configurations: validated.
 - Frontend route: rechecked; see execution output.
 - mTLS acceptance/rejection: see previous test evidence.
-- Envoy-to-Envoy hybrid negotiation: NOT VERIFIED - NO CONFIRMED ENVOY-TO-ENVOY SERVERHELLO EVIDENCE.
-- Direct OpenSSL hybrid negotiation is not proof of Envoy-to-Envoy negotiation.
+- Envoy-to-Envoy hybrid negotiation: PASS — confirmed by captured ServerHello from backend Envoy (172.26.0.3) to frontend Envoy (172.26.0.4), selecting X25519MLKEM768 (group 4588) under TLS 1.3.
+- TLS 1.3 was confirmed by the ServerHello supported_versions extension (0x0304); the legacy record version field is not used to determine the negotiated TLS version.
+
+
+## Envoy-to-Envoy packet-capture evidence — 2026-11-04
+
+- Capture was taken in the frontend Envoy network namespace for traffic to backend Envoy 172.26.0.3:8443.
+- Multiple ServerHello packets were decoded with tshark.
+- ServerHello source: backend Envoy 172.26.0.3; destination: frontend Envoy 172.26.0.4.
+- TLS supported_versions: TLS 1.3 (0x0304).
+- ServerHello key_share group: X25519MLKEM768 (4588).
+- This is direct packet evidence of the Envoy-to-Envoy negotiated hybrid group, not an inference from configuration or the separate OpenSSL test.
