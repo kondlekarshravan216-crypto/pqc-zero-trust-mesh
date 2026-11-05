@@ -1,0 +1,199 @@
+================================================================================
+RAW TERMINAL EXECUTION LOGS — 05 NOVEMBER 2026
+Post-Quantum Zero-Trust Mesh | Member 5: Manideep (OPA, Vault & Dashboard)
+================================================================================
+
+>>> opa test opa/policies/ -v
+opa\policies\authz_test.rego:56:
+data.authz.test_allow_envoy_check_request: PASS (6.3477ms)
+opa\policies\authz_test.rego:90:
+data.authz.test_allow_mesh_source_input: PASS (6.8532ms)
+opa\policies\authz_test.rego:38:
+data.authz.test_allow_demo_frontend_identity: PASS (8.0096ms)
+
+opa\policies\authorization_test.rego:33:
+data.mesh.authz.test_deny_unknown_backend: PASS (579µs)
+
+opa\policies\authz_test.rego:134:
+data.authz.test_deny_backend_mutating_database: PASS (0s)
+opa\policies\authz_test.rego:24:
+data.authz.test_deny_unauthorized_destination: PASS (8.5148ms)
+
+opa\policies\authorization_test.rego:6:
+data.mesh.authz.test_allow_frontend_backend: PASS (524.2µs)
+opa\policies\authorization_test.rego:24:
+data.mesh.authz.test_deny_frontend_database: PASS (0s)
+opa\policies\authorization_test.rego:15:
+data.mesh.authz.test_allow_backend_database: PASS (0s)
+
+opa\policies\authz_test.rego:33:
+data.authz.test_deny_empty_input: PASS (9.7452ms)
+opa\policies\authz_test.rego:116:
+data.authz.test_allow_backend_database_access: PASS (5.0262ms)
+opa\policies\authz_test.rego:99:
+data.authz.test_deny_envoy_mutating_action: PASS (9.6734ms)
+opa\policies\authz_test.rego:73:
+data.authz.test_deny_envoy_lateral_database: PASS (9.6734ms)
+opa\policies\authz_test.rego:125:
+data.authz.test_allow_cluster_backend_database: PASS (2.8202ms)
+opa\policies\authz_test.rego:143:
+data.authz.test_deny_backend_reverse_traversal: PASS (9.7689ms)
+opa\policies\authz_test.rego:15:
+data.authz.test_deny_unapproved_identity: PASS (10.8675ms)
+opa\policies\authz_test.rego:6:
+data.authz.test_allow_approved_identity: PASS (9.6734ms)
+opa\policies\authz_test.rego:47:
+data.authz.test_deny_unauthorized_action: PASS (10.2901ms)
+--------------------------------------------------------------------------------
+PASS: 18/18
+
+
+>>> python tests/test_service_path.py
+=================================================================
+   PQC Zero-Trust Mesh - Service Authz & Secret Lifecycle Suite
+=================================================================
+
+[+] Starting live OPA server on 127.0.0.1:8181...
+    Live OPA server is READY and accepting policy evaluation queries.
+[+] Backend Service listening on 127.0.0.1:4741 with mTLS + OPA ext_authz
+
+==================================================
+ Part 1: Service Request Path Authorization Tests
+==================================================
+[PASS] Test 1: Authorized Frontend -> Backend (Demo SPIFFE ID) [ALLOW]
+       Expected: HTTP 200 OK with opa_decision: allow | Actual: HTTP 200
+       Details:  Client SVID: spiffe://pqzt.local/ns/demo/sa/frontend
+[PASS] Test 2: Authorized Frontend -> Backend (Cluster SPIFFE ID) [ALLOW]
+       Expected: HTTP 200 OK with opa_decision: allow | Actual: HTTP 200
+       Details:  Client SVID: spiffe://cluster.local/ns/mesh/sa/frontend-service
+[PASS] Test 3: Unapproved Workload SVID -> Backend [DENY]
+       Expected: HTTP 403 Forbidden with opa_decision: deny | Actual: HTTP 403
+       Details:  Client SVID: spiffe://pqzt.local/ns/demo/sa/unapproved-attacker
+[PASS] Test 4: Frontend Lateral Movement -> Database [DENY]
+       Expected: HTTP 403 Forbidden with Access Denied | Actual: HTTP 403
+       Details:  Destination: database, Source: frontend
+[PASS] Test 5: Unauthorized Mutating Action (DELETE) [DENY]
+       Expected: HTTP 403 Forbidden with Access Denied | Actual: HTTP 403
+       Details:  Action: DELETE
+[PASS] Test 6: Missing Client Certificate Handshake Rejection [DENY]
+       Expected: Handshake / connection rejected before HTTP layer | Actual: Code -1: SSLError: TLSV13_ALERT_CERTIFICATE_REQUI
+       Details:  Enforces mutual TLS client certificate requirement
+[PASS] Test 7: Untrusted CA Client Certificate Rejection [DENY]
+       Expected: SSLError / Handshake rejected by server | Actual: Code -2: ConnectionError: [WinError 10054] An exi
+       Details:  Client cert issued by Rogue CA rejected by Mesh CA trust chain
+[PASS] Test 8: Expired Client Certificate Rejection [DENY]
+       Expected: SSLError / Handshake rejected (expired) | Actual: Code -2: ConnectionError: [WinError 10054] An exi
+       Details:  Real CA signature rejected due to expired validity window
+
+==================================================
+ Part 2: Dynamic Key & Certificate Rotation Workflow
+==================================================
+[PASS] Test 9: Issue Renewed Leaf Certificate V2 (New Keypair & Serial)
+       Expected: New Serial != 712006691851872434235799957154885813935012291860 | Actual: Serial V2: 389757006026509471218173590637411587283517409703
+       Details:  Keypair rotated: True
+[PASS] Test 10: Client Handshake with Rotated Certificate V2 [ALLOW]
+       Expected: HTTP 200 OK with opa_decision: allow | Actual: HTTP 200
+       Details:  Service immediately honors rotated client credentials
+[PASS] Test 11: Server Hot Reload & Client Re-handshake (Envoy SDS model) [ALLOW]
+       Expected: HTTP 200 OK after hot reload with zero downtime | Actual: HTTP 200
+       Details:  Server Cert Serial rotated to 275496596750341344752357513270892393726514201005
+
+==================================================
+ Part 3: Vault Configuration & Secret Lifecycle Review
+==================================================
+[PASS] Test 12: Vault Server Dev Config (vault-dev.hcl) Security Perimeter
+       Expected: Loopback binding, local file storage, UI enabled | Actual: loopback=True, file_store=True, ui=True
+       Details:  Restricts unauthenticated dev traffic strictly to local host
+[PASS] Test 13: Vault Least-Privilege Policy (mesh-secrets.hcl) Zero-Trust Immutability
+       Expected: create/read/update permitted, delete/destroy/sudo strictly absent | Actual: kv_data=True, cru=True, no_delete=True
+       Details:  Enforces zero-trust: workloads cannot purge audit logs or versions
+[PASS] Test 14: Vault KV v2 Secret Retrieval, Rotation & Rollback Lifecycle
+       Expected: Put V1 -> Read V1 -> Rotate V2 -> Rollback V1 supported | Actual: Versions=[1, 2], Latest=rotated-secret-...
+       Details:  Proves version history retention allows disaster recovery
+[PASS] Test 15: Real-Time Authorization Decision & Audit Logging
+       Expected: Both ALLOW and DENY decisions captured with client SPIFFE SVID | Actual: Total events: 7 (ALLOW=True, DENY=True)
+       Details:  Feeds security telemetry events directly into monitoring dashboard
+
+[+] Tearing down background servers and isolated sandbox...
+
+=================================================================
+                   SUMMARY OF RESULTS
+=================================================================
+Total Tests Executed: 15
+Passed:                15
+Failed:                0
+
+[+] Detailed markdown report generated at: results-service-authz.md
+
+
+>>> python tests/test_vault_pki.py
+=================================================================
+   PQC Zero-Trust Mesh - Vault PKI Setup & Rotation Test Suite
+=================================================================
+
+--- Part 1: Vault PKI Engine Setup & Configuration ---
+[PASS] Test 1: Vault PKI Mount & Root CA Generation (pki_mesh)
+       Expected: Root CA certificate created with valid serial and PEM format | Actual: ca_file_exists=True, serial=1a95777e751e...
+       Details:  Initializes centralized mesh certificate authority
+[PASS] Test 2: Workload Role Definition (mesh-workload)
+       Expected: Allows pqzt.local domain, SPIFFE URI SANs, and 12h default TTL | Actual: domains=True, spiffe=True, ttl=12h
+       Details:  Enforces zero-trust short-lived credential policy
+
+--- Part 2: Workload Certificate Issuance (Frontend & Backend) ---
+[PASS] Test 3: Issue Frontend Client Leaf Certificate (V1)
+       Expected: Certificate generated with SPIFFE URI SAN and clientAuth EKU | Actual: Serial V1: 7a4a42f36930...
+       Details:  Service identity: spiffe://pqzt.local/ns/demo/sa/frontend
+[PASS] Test 4: Issue Backend Server Leaf Certificate (V1)
+       Expected: Certificate generated with SPIFFE URI SAN and serverAuth EKU | Actual: Serial V1: 477dfd9a7c29...
+       Details:  Service identity: spiffe://pqzt.local/ns/demo/sa/backend
+
+--- Part 3: Live Mutual TLS Handshake using Vault Credentials ---
+[PASS] Test 5: mTLS Handshake with Vault PKI Leaf Certificates [ALLOW]
+       Expected: HTTP 200 OK with mutual authentication | Actual: HTTP 200
+       Details:  Both server and client verify Vault Mesh Root CA trust chain
+
+--- Part 4: Dynamic Certificate Renewal & Rotation (Envoy SDS) ---
+[PASS] Test 6: Automated Workload Certificate Renewal (Frontend V2)
+       Expected: Fresh keypair & serial generated (V2 != V1) | Actual: Serial V2: 4bc57213c63b... (version 2)
+       Details:  Simulates Vault Agent / SPIRE scheduled renewal at 66% TTL
+[PASS] Test 7: Dynamic Zero-Downtime Server TLS Hot Swap & Client V2 Handshake
+       Expected: HTTP 200 OK without dropped connections or service restart | Actual: HTTP 200 (Server V2, Client V2)
+       Details:  Demonstrates seamless Envoy Secret Discovery Service (SDS) hot-swap
+
+--- Part 5: Emergency Revocation & CRL Enforcement ---
+[PASS] Test 8: Emergency Certificate Revocation in Vault (pki_mesh/revoke)
+       Expected: Serial marked REVOKED and updated in CRL | Actual: Revocation executed=True, is_revoked=True
+       Details:  Revoked serial: 7a4a42f36930cfd05c0707bc08c28e33f286e4e9
+[PASS] Test 9: Vault CRL Generation & Active Status Integrity
+       Expected: CRL contains revoked V1 serial while active V2 serial is NOT revoked | Actual: crl_valid=True, v1_revoked=True, v2_active=True
+       Details:  Workload operations continue uninterrupted on renewed credentials
+
+--- Part 6: Vault PKI Policy & Telemetry Pipeline Verification ---
+[PASS] Test 10: Vault PKI Least-Privilege Access Policy (mesh-pki.hcl)
+       Expected: Issue, CRL, and Revoke permitted; Root CA delete/destroy prohibited | Actual: issue=True, revoke=True, crl=True, no_delete=True
+       Details:  Enforces zero-trust governance on cryptographic authority
+[PASS] Test 11: Vault PKI Certificate Telemetry Event Emission
+       Expected: Audit pipeline logs initial issuance, scheduled rotation, and revocation | Actual: Total events: 123 (rotation=True, revocation=True)
+       Details:  Feeds verified certificate lifecycle events directly to dashboard
+
+--- Part 7: Live Vault HTTP REST API Contract & Integration Audit ---
+[PASS] Test 12: Vault HTTP REST API Client Endpoint & Header Contract
+       Expected: X-Vault-Token and Content-Type: application/json properly formatted | Actual: has_token=True, content_type=application/json
+       Details:  Complies with official HashiCorp Vault PKI HTTP API specifications
+[PASS] Test 13: Dual-Mode Engine Architecture & Integration Audit Breakdown
+       Expected: Clear distinction of actual Vault REST endpoints vs fallback simulation | Actual: mode=STANDALONE_CRYPTOGRAPHIC_EMULATION, api_endpoints=8
+       Details:  Provides full architectural transparency on real vs simulated components
+[PASS] Test 14: Cryptographic Trust Chain & SPIFFE SVID Verification
+       Expected: Signature verifies against Root CA public key and contains SPIFFE SVID | Actual: issuer_matches=True, sig_valid=True, svid=True
+       Details:  Guarantees workload certificate cryptographic provenance
+
+[+] Cleaning up test background servers and test sandbox...
+
+=================================================================
+                   SUMMARY OF RESULTS
+=================================================================
+Total Tests Executed: 14
+Passed:                14
+Failed:                0
+
+[+] Detailed markdown report generated at: results-vault-pki.md

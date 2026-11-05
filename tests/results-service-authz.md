@@ -1,5 +1,5 @@
 # Service Request Path Authorization & Secret Management Results
-**Date**: 2026-11-05T13:07:30.513248+00:00  
+**Date**: 2026-11-05T13:22:34.114259+00:00  
 **Module**: OPA Authorization, Service Request Path Integration, Vault & Certificate Rotation  
 **Overall Status**: ALL TESTS PASSED (100%)  
 
@@ -15,9 +15,9 @@
 | 6 | Transport Security | Missing Client Certificate Handshake Rejection [DENY] | `Handshake / connection rejected before HTTP layer` | `Code -1: SSLError: TLSV13_ALERT_CERTIFICATE_REQUI` | **PASS** | Enforces mutual TLS client certificate requirement |
 | 7 | Transport Security | Untrusted CA Client Certificate Rejection [DENY] | `SSLError / Handshake rejected by server` | `Code -2: ConnectionError: [WinError 10054] An exi` | **PASS** | Client cert issued by Rogue CA rejected by Mesh CA trust chain |
 | 8 | Transport Security | Expired Client Certificate Rejection [DENY] | `SSLError / Handshake rejected (expired)` | `Code -2: ConnectionError: [WinError 10054] An exi` | **PASS** | Real CA signature rejected due to expired validity window |
-| 9 | Certificate Rotation | Issue Renewed Leaf Certificate V2 (New Keypair & Serial) | `New Serial != 297041865865987074447362501745803580789152733946` | `Serial V2: 336875897305758713489110048785538864748002991900` | **PASS** | Keypair rotated: True |
+| 9 | Certificate Rotation | Issue Renewed Leaf Certificate V2 (New Keypair & Serial) | `New Serial != 712006691851872434235799957154885813935012291860` | `Serial V2: 389757006026509471218173590637411587283517409703` | **PASS** | Keypair rotated: True |
 | 10 | Certificate Rotation | Client Handshake with Rotated Certificate V2 [ALLOW] | `HTTP 200 OK with opa_decision: allow` | `HTTP 200` | **PASS** | Service immediately honors rotated client credentials |
-| 11 | Certificate Rotation | Server Hot Reload & Client Re-handshake (Envoy SDS model) [ALLOW] | `HTTP 200 OK after hot reload with zero downtime` | `HTTP 200` | **PASS** | Server Cert Serial rotated to 91394766306092415358491022032936406021375435821 |
+| 11 | Certificate Rotation | Server Hot Reload & Client Re-handshake (Envoy SDS model) [ALLOW] | `HTTP 200 OK after hot reload with zero downtime` | `HTTP 200` | **PASS** | Server Cert Serial rotated to 275496596750341344752357513270892393726514201005 |
 | 12 | Vault Configuration | Vault Server Dev Config (vault-dev.hcl) Security Perimeter | `Loopback binding, local file storage, UI enabled` | `loopback=True, file_store=True, ui=True` | **PASS** | Restricts unauthenticated dev traffic strictly to local host |
 | 13 | Vault Policy | Vault Least-Privilege Policy (mesh-secrets.hcl) Zero-Trust Immutability | `create/read/update permitted, delete/destroy/sudo strictly absent` | `kv_data=True, cru=True, no_delete=True` | **PASS** | Enforces zero-trust: workloads cannot purge audit logs or versions |
 | 14 | Secret Management Workflow | Vault KV v2 Secret Retrieval, Rotation & Rollback Lifecycle | `Put V1 -> Read V1 -> Rotate V2 -> Rollback V1 supported` | `Versions=[1, 2], Latest=rotated-secret-...` | **PASS** | Proves version history retention allows disaster recovery |
