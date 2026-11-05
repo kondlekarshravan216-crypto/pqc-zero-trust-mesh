@@ -60,7 +60,7 @@ static_resources:
         name: envoy.transport_sockets.tls
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: backend
+          sni: backend.pqzt.local
           common_tls_context:
             tls_params:
               tls_minimum_protocol_version: TLSv1_3

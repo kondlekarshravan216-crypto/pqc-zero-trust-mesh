@@ -1,0 +1,7 @@
+PQC Zero-Trust Mesh - Daily Progress
+Date: 2026-11-04
+
+- Reviewed and confirmed Vault-backed Envoy mTLS integration.
+- Confirmed TLS 1.3 and frontend SPIFFE identity authentication.
+- Confirmed rejection of clients without a certificate.
+- Next: Verify hybrid KEM negotiation between frontend and backend Envoy.

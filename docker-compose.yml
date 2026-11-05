@@ -1,8 +1,3 @@
-
-# Before first start, generate the CA and service certificates.
-# Certificates are stored in the secure WSL Linux filesystem.
-# Configure LOCAL_UID and LOCAL_GID so Envoy can read the private keys.
-
 services:
   backend-app:
     image: python:3.12-alpine
@@ -22,9 +17,9 @@ services:
       - "info"
     volumes:
       - "./envoy/backend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
-      - "/home/agnes/pki-mtls-secure/backend/backend.crt:/etc/pqzt/certs/backend.crt:ro"
-      - "/home/agnes/pki-mtls-secure/backend/backend.key:/etc/pqzt/certs/backend.key:ro"
-      - "/home/agnes/pki-mtls-secure/backend/ca.crt:/etc/pqzt/certs/ca.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/backend.crt:/etc/pqzt/certs/backend.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/backend-envoy.key:/etc/pqzt/certs/backend.key:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/vault-root-ca-v3.pem:/etc/pqzt/certs/ca.crt:ro"
     ports:
       - "127.0.0.1:18443:8443"
     depends_on:
@@ -58,9 +53,9 @@ services:
       - "info"
     volumes:
       - "./envoy/frontend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
-      - "/home/agnes/pki-mtls-secure/frontend/frontend.crt:/etc/pqzt/certs/frontend.crt:ro"
-      - "/home/agnes/pki-mtls-secure/frontend/frontend.key:/etc/pqzt/certs/frontend.key:ro"
-      - "/home/agnes/pki-mtls-secure/frontend/ca.crt:/etc/pqzt/certs/ca.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/frontend.crt:/etc/pqzt/certs/frontend.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/frontend-envoy.key:/etc/pqzt/certs/frontend.key:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/vault-root-ca-v3.pem:/etc/pqzt/certs/ca.crt:ro"
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

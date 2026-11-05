@@ -1,0 +1,38 @@
+PQC Zero-Trust Mesh - Live Envoy mTLS Validation
+Date: 2026-11-03
+
+1. Docker Compose
+All three services running:
+- backend-app
+- backend-envoy
+- frontend-envoy
+
+2. Frontend-to-backend request
+Command:
+curl -i http://127.0.0.1:8080/
+
+Result:
+HTTP 200 OK
+{"service":"backend","status":"ok"}
+
+3. Backend Envoy access log
+tls=TLSv1.3
+peer_uri_san=spiffe://pqzt.local/ns/demo/sa/frontend
+
+Result:
+Frontend workload identity observed by backend Envoy.
+
+4. Negative mTLS test
+Direct backend connection without a client certificate.
+
+Result:
+TLS alert: certificate required.
+
+5. Hybrid key exchange
+Direct backend TLS connection negotiated:
+X25519MLKEM768
+
+Note:
+Hybrid KEM was confirmed on the direct backend connection.
+Frontend-to-backend hybrid negotiation remains to be verified.
+Certificate public keys and signatures remain EC P-256 / ECDSA-SHA256.
