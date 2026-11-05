@@ -32,41 +32,99 @@ Kubernetes NetworkPolicies are additive. The default-deny policy and explicit al
 
 NetworkPolicy enforcement depends on the cluster's Container Network Interface (CNI). The presence of a NetworkPolicy does not prove that traffic is being filtered.
 
-6. Validation Status
+## 6. Validation Status
 
-- Manifest creation: Completed
-- YAML syntax validation: Pending
-- Kubernetes API validation: Pending
-- Cluster availability verification: Pending
-- CNI enforcement verification: Pending
-- Frontend-to-backend connectivity test: Pending
-- Unauthorized traffic-denial test: Pending
+The Kubernetes manifests were deployed and tested in a Killercoda Kubernetes environment.
 
-Runtime tests must be performed before marking them successful.
+- Namespace creation: Completed
+- Frontend and backend deployments: Completed
+- Service creation and endpoint checks: Completed
+- Default-deny ingress policy: Applied
+- Frontend-to-backend NetworkPolicy: Applied
+- Cilium status check: Reported OK
+- Authorized traffic test: Passed
+- Unauthorized traffic test: Timed out; further verification required
+- Frontend pod restart test: Completed
+- Authorized communication after restart: Passed
 
-7. Runtime Testing Plan
+## 7. Environment and Deployment Evidence
 
-1. Apply the namespace and workload manifests.
-2. Confirm that frontend and backend pods are ready.
-3. Verify that the backend Service targets the correct pods.
-4. Test frontend-to-backend connectivity on TCP port 8080.
-5. Create a temporary unauthorized test pod.
-6. Verify that the unauthorized pod cannot connect to the backend.
-7. Record test outputs and any failures.
-8. Confirm that the cluster's CNI enforces NetworkPolicies.
+**Environment**
+- Kubernetes cluster: Killercoda
+- Nodes: controlplane and node01
+- CNI: Cilium
+- Namespace: `zero-trust-demo`
 
-8. Current Limitations
+**Commands executed**
+```bash
+kubectl get nodes
+kubectl get pods -A
+kubectl get namespaces
+cilium status
 
-Runtime testing has not yet been confirmed. A working Kubernetes cluster and compatible CNI are required to demonstrate actual network isolation.
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f kubernetes/kubernetes/backend.yaml
+kubectl apply -f kubernetes/kubernetes/frontend.yaml
+kubectl apply -f kubernetes/kubernetes/default-deny.yaml
+kubectl apply -f kubernetes/kubernetes/kubernetes/network-policy.yaml
 
-The frontend workload must also be configured to generate HTTP requests before end-to-end application connectivity can be tested.
+kubectl get pods -n zero-trust-demo
+kubectl get svc -n zero-trust-demo
+kubectl get networkpolicy -n zero-trust-demo
+kubectl get endpoints -n zero-trust-demo
+```
 
-9. Integration Considerations
+The namespace, deployments, services, and NetworkPolicies were created successfully. Both application pods reached `1/1 Running`.
 
-Coordinate with the Envoy and OPA team members to identify required service ports, authenticated service identities, and additional traffic requirements.
+## 8. Traffic Testing Results
 
-Kubernetes NetworkPolicies provide network-level controls; they do not independently implement mTLS, post-quantum cryptography, or application authorization.
+### Authorized traffic
 
-10. Conclusion
+The frontend pod successfully accessed the backend service on TCP port 8080.
 
-This module establishes the configuration foundation for Kubernetes microsegmentation. Final completion requires manifest validation, runtime traffic testing, and documented evidence.
+Observed response:
+
+```text
+zero-trust-backend-ok
+```
+
+**Result:** Passed.
+
+### Unauthorized traffic
+
+A temporary pod labelled `app=unauthorized` was created and tested against the backend.
+
+Observed result:
+
+```text
+wget: download timed out
+command terminated with exit code 1
+```
+
+**Result:** Connection timed out, consistent with the intended deny policy. A repeat test with additional connectivity checks is still required to conclusively establish NetworkPolicy enforcement.
+
+### Pod restart behavior
+
+The frontend pod was deleted and its Deployment recreated it.
+
+Observed result:
+- Frontend Deployment rollout completed successfully.
+- Authorized frontend-to-backend communication worked after the restart.
+
+**Result:** Passed.
+
+## 9. Current Limitations and Next Steps
+
+- Repeat the unauthorized traffic test and confirm that the timeout is caused by NetworkPolicy enforcement.
+- Capture complete terminal output for both allowed and denied traffic tests.
+- Confirm the final manifest paths and remove unnecessary nested directories if required.
+- Coordinate with the Envoy and OPA teams for integration testing.
+- End-to-end integration with PQC, Envoy mTLS, OPA, and Vault remains outside the scope of the tests demonstrated here.
+
+## 10. Conclusion
+
+The Kubernetes microsegmentation module has a working deployment foundation. Namespace creation, workload deployment, service discovery, NetworkPolicy creation, authorized backend access, and frontend recovery after restart were demonstrated in Killercoda.
+
+Unauthorized traffic produced a timeout, but additional verification is required before declaring the deny policy fully validated.
+
+Runtime results are limited to the demonstrated Kubernetes environment and should not be interpreted as proof of complete end-to-end zero-trust integration.
