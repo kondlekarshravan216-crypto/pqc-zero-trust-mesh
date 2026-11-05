@@ -1,0 +1,11 @@
+TLS 1.3 ServerHello - Packet Capture Evidence
+
+Handshake extension: key_share
+Negotiated group: X25519MLKEM768
+Named group ID: 4588
+Key Exchange length: 1120 bytes
+TLS version: TLS 1.3 (0x0304)
+
+Source: pqc-envoy-handshake.pcapng
+Analysis: Wireshark/TShark
+Result: Hybrid key-exchange group observed in the captured ServerHello.
