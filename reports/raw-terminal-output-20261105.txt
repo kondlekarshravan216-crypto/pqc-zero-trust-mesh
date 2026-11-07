@@ -126,6 +126,21 @@ Failed:                0
 [+] Detailed markdown report generated at: results-service-authz.md
 
 
+>>> python vault/scripts/vault_pki_coordinator.py
+=================================================================
+   PQC Zero-Trust Mesh - Vault PKI Engine & API Coordinator
+=================================================================
+[+] Engine Mode:         LIVE_VAULT_HTTP_API
+[+] Vault Target Addr:   http://127.0.0.1:8200
+[+] Live Vault Healthy:  True
+[+] Root CA Serial:      1a18ba2ec7ae0e3258b3db2925b53d6bdaa4676b
+[+] Issued Frontend Leaf Cert (V1): 011f93cb3de0e7fc81de6c05a0d7218cb283c0e1
+[+] Issued Backend Leaf Cert (V1):  6a3c655b3baeee203c5ce0873c0aadc5750feb58
+[+] Renewed Frontend Leaf Cert (V2): 4e7622e20c1f91ca553eca403fa22f5a94a6726f
+[+] Revoked Frontend V1 Cert: 011f93cb3de0e7fc81de6c05a0d7218cb283c0e1 (is_revoked=True)
+[+] Vault PKI lifecycle complete.
+
+
 >>> python tests/test_vault_pki.py
 =================================================================
    PQC Zero-Trust Mesh - Vault PKI Setup & Rotation Test Suite
@@ -133,7 +148,7 @@ Failed:                0
 
 --- Part 1: Vault PKI Engine Setup & Configuration ---
 [PASS] Test 1: Vault PKI Mount & Root CA Generation (pki_mesh)
-       Expected: Root CA certificate created with valid serial and PEM format | Actual: ca_file_exists=True, serial=1a95777e751e...
+       Expected: Root CA certificate created with valid serial and PEM format | Actual: ca_file_exists=True, serial=1a18ba2ec7ae...
        Details:  Initializes centralized mesh certificate authority
 [PASS] Test 2: Workload Role Definition (mesh-workload)
        Expected: Allows pqzt.local domain, SPIFFE URI SANs, and 12h default TTL | Actual: domains=True, spiffe=True, ttl=12h
@@ -141,10 +156,10 @@ Failed:                0
 
 --- Part 2: Workload Certificate Issuance (Frontend & Backend) ---
 [PASS] Test 3: Issue Frontend Client Leaf Certificate (V1)
-       Expected: Certificate generated with SPIFFE URI SAN and clientAuth EKU | Actual: Serial V1: 7a4a42f36930...
+       Expected: Certificate generated with SPIFFE URI SAN and clientAuth EKU | Actual: Serial V1: 4a414834e150...
        Details:  Service identity: spiffe://pqzt.local/ns/demo/sa/frontend
 [PASS] Test 4: Issue Backend Server Leaf Certificate (V1)
-       Expected: Certificate generated with SPIFFE URI SAN and serverAuth EKU | Actual: Serial V1: 477dfd9a7c29...
+       Expected: Certificate generated with SPIFFE URI SAN and serverAuth EKU | Actual: Serial V1: 6288d852d003...
        Details:  Service identity: spiffe://pqzt.local/ns/demo/sa/backend
 
 --- Part 3: Live Mutual TLS Handshake using Vault Credentials ---
@@ -154,7 +169,7 @@ Failed:                0
 
 --- Part 4: Dynamic Certificate Renewal & Rotation (Envoy SDS) ---
 [PASS] Test 6: Automated Workload Certificate Renewal (Frontend V2)
-       Expected: Fresh keypair & serial generated (V2 != V1) | Actual: Serial V2: 4bc57213c63b... (version 2)
+       Expected: Fresh keypair & serial generated (V2 != V1) | Actual: Serial V2: 48efbb7076b5... (version 2)
        Details:  Simulates Vault Agent / SPIRE scheduled renewal at 66% TTL
 [PASS] Test 7: Dynamic Zero-Downtime Server TLS Hot Swap & Client V2 Handshake
        Expected: HTTP 200 OK without dropped connections or service restart | Actual: HTTP 200 (Server V2, Client V2)
@@ -163,7 +178,7 @@ Failed:                0
 --- Part 5: Emergency Revocation & CRL Enforcement ---
 [PASS] Test 8: Emergency Certificate Revocation in Vault (pki_mesh/revoke)
        Expected: Serial marked REVOKED and updated in CRL | Actual: Revocation executed=True, is_revoked=True
-       Details:  Revoked serial: 7a4a42f36930cfd05c0707bc08c28e33f286e4e9
+       Details:  Revoked serial: 4a414834e150d58bd3e5bba638288805183b1e73
 [PASS] Test 9: Vault CRL Generation & Active Status Integrity
        Expected: CRL contains revoked V1 serial while active V2 serial is NOT revoked | Actual: crl_valid=True, v1_revoked=True, v2_active=True
        Details:  Workload operations continue uninterrupted on renewed credentials
@@ -173,7 +188,7 @@ Failed:                0
        Expected: Issue, CRL, and Revoke permitted; Root CA delete/destroy prohibited | Actual: issue=True, revoke=True, crl=True, no_delete=True
        Details:  Enforces zero-trust governance on cryptographic authority
 [PASS] Test 11: Vault PKI Certificate Telemetry Event Emission
-       Expected: Audit pipeline logs initial issuance, scheduled rotation, and revocation | Actual: Total events: 123 (rotation=True, revocation=True)
+       Expected: Audit pipeline logs initial issuance, scheduled rotation, and revocation | Actual: Total events: 145 (rotation=True, revocation=True)
        Details:  Feeds verified certificate lifecycle events directly to dashboard
 
 --- Part 7: Live Vault HTTP REST API Contract & Integration Audit ---
@@ -181,7 +196,7 @@ Failed:                0
        Expected: X-Vault-Token and Content-Type: application/json properly formatted | Actual: has_token=True, content_type=application/json
        Details:  Complies with official HashiCorp Vault PKI HTTP API specifications
 [PASS] Test 13: Dual-Mode Engine Architecture & Integration Audit Breakdown
-       Expected: Clear distinction of actual Vault REST endpoints vs fallback simulation | Actual: mode=STANDALONE_CRYPTOGRAPHIC_EMULATION, api_endpoints=8
+       Expected: Clear distinction of actual Vault REST endpoints vs fallback simulation | Actual: mode=LIVE_VAULT_HTTP_API, api_endpoints=8
        Details:  Provides full architectural transparency on real vs simulated components
 [PASS] Test 14: Cryptographic Trust Chain & SPIFFE SVID Verification
        Expected: Signature verifies against Root CA public key and contains SPIFFE SVID | Actual: issuer_matches=True, sig_valid=True, svid=True

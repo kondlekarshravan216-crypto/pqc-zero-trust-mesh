@@ -238,6 +238,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             eval_res = evaluate_opa_policy(caller, dest, action, path)
             allow = eval_res["allow"]
             reason = eval_res["reason"]
+            evaluator = eval_res["evaluator"]
+
+            # Distinguish genuine OPA CLI evaluations from Python fallback
+            is_genuine_opa = (evaluator == "opa_cli_v1")
 
             now = dt.datetime.now(dt.timezone.utc)
             event = {
@@ -252,11 +256,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "decision": allow,
                 "reason": reason,
                 "evalDurationMs": eval_res["eval_duration_ms"],
-                "evaluator": eval_res["evaluator"],
-                "isGenuine": True,
-                "verificationMode": "live_opa_ext_authz",
-                "source": "live_request_evaluator",
-                "details": f"Genuine ext_authz decision: {'ALLOW' if allow else 'DENY'} ({reason})"
+                "evaluator": evaluator,
+                "isGenuine": is_genuine_opa,
+                "verificationMode": "live_opa_ext_authz" if is_genuine_opa else "python_policy_fallback",
+                "source": "live_request_evaluator" if is_genuine_opa else "python_embedded_fallback",
+                "details": (
+                    f"Genuine ext_authz decision: {'ALLOW' if allow else 'DENY'} ({reason})"
+                    if is_genuine_opa else
+                    f"Python fallback evaluation (OPA CLI unavailable): {'ALLOW' if allow else 'DENY'} ({reason})"
+                )
             }
 
             self._append_telemetry(event)

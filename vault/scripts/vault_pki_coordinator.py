@@ -248,16 +248,27 @@ class VaultPKIEngine:
         """Initializes Root CA via live Vault API or cryptographic emulation."""
         self.now = dt.datetime.now(dt.timezone.utc)
         self.ca_file = self.work_dir / "ca.crt"
+        self.ca_key = None  # Only set when running in emulation mode
 
         if self.engine_mode == "LIVE_VAULT_HTTP_API":
             try:
-                # 1. Mount pki_mesh engine
+                # 1. Mount pki_mesh engine (idempotent — no-op if already mounted)
                 self.api_client.mount_pki("pki_mesh")
-                # 2. Generate or fetch Root CA
-                ca_data = self.api_client.generate_root_ca("pki_mesh")
-                ca_pem = ca_data.get("certificate", "").encode("utf-8")
-                if not ca_pem:
-                    ca_pem = self.api_client.get_ca("pki_mesh")
+                # 2. Check if Root CA already exists before generating a new one
+                existing_ca_pem = None
+                try:
+                    existing_ca_pem = self.api_client.get_ca("pki_mesh")
+                except Exception:
+                    pass
+                if existing_ca_pem and len(existing_ca_pem.strip()) > 100:
+                    # Root CA already exists — reuse it
+                    ca_pem = existing_ca_pem
+                else:
+                    # Generate new Root CA
+                    ca_data = self.api_client.generate_root_ca("pki_mesh")
+                    ca_pem = ca_data.get("certificate", "").encode("utf-8")
+                    if not ca_pem or ca_pem == b"":
+                        ca_pem = self.api_client.get_ca("pki_mesh")
                 self.ca_file.write_bytes(ca_pem)
                 self.ca_cert = x509.load_pem_x509_certificate(ca_pem)
                 self.ca_serial = format(self.ca_cert.serial_number, "x")
@@ -310,6 +321,7 @@ class VaultPKIEngine:
         role_data = {
             "allowed_domains": ["pqzt.local", "cluster.local", "demo.svc.cluster.local"],
             "allow_subdomains": True,
+            "allow_any_name": True,
             "allowed_uri_sans": [
                 "spiffe://pqzt.local/ns/demo/sa/*",
                 "spiffe://cluster.local/ns/mesh/sa/*",
@@ -319,6 +331,7 @@ class VaultPKIEngine:
             "max_ttl": "24h",
             "ttl": "12h",
             "require_cn": False,
+            "enforce_hostnames": False,
         }
         self.roles["mesh-workload"] = role_data
 
@@ -421,8 +434,15 @@ class VaultPKIEngine:
                 self.certificates[serial_hex] = meta
                 self._emit_issuance_telemetry(meta, version, common_name, uri_sans, now)
                 return cert_file, key_file, serial_hex
-            except Exception:
-                # Fall back to emulation if API call failed
+            except Exception as api_err:
+                # In LIVE mode, if ca_key is unavailable emulation is not possible;
+                # re-raise so the caller sees the real Vault API error.
+                if not hasattr(self, 'ca_key') or self.ca_key is None:
+                    raise RuntimeError(
+                        f"Vault API certificate issuance failed and no emulation "
+                        f"fallback is available (LIVE_VAULT_HTTP_API mode): {api_err}"
+                    ) from api_err
+                # Otherwise fall through to emulation
                 pass
 
         # 2. Cryptographic Emulation Issuance
