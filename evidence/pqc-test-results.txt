@@ -1,0 +1,36 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.8, pytest-9.2.0, pluggy-1.7.0 -- /home/kali/pqc-zero-trust-mesh/.venv/bin/python
+cachedir: .pytest_cache
+benchmark: 5.3.1 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/kali/pqc-zero-trust-mesh
+plugins: benchmark-5.3.1
+collecting ... collected 5 items / 3 errors
+
+==================================== ERRORS ====================================
+_ ERROR collecting pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py _
+import file mismatch:
+imported module 'test_hybrid_kem' has this __file__ attribute:
+  /home/kali/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+which is not the same as the test file we want to collect:
+  /home/kali/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+______ ERROR collecting pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py _______
+import file mismatch:
+imported module 'test_hybrid_kem' has this __file__ attribute:
+  /home/kali/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+which is not the same as the test file we want to collect:
+  /home/kali/pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+________________ ERROR collecting tests/pqc/test_hybrid_kem.py _________________
+import file mismatch:
+imported module 'test_hybrid_kem' has this __file__ attribute:
+  /home/kali/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+which is not the same as the test file we want to collect:
+  /home/kali/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+=========================== short test summary info ============================
+ERROR pqc-zero-trust-mesh/pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+ERROR pqc-zero-trust-mesh/tests/pqc/test_hybrid_kem.py
+ERROR tests/pqc/test_hybrid_kem.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!!
+============================== 3 errors in 0.18s ===============================

@@ -1,3 +1,4 @@
+
 import pytest
 from cryptography.hazmat.primitives.asymmetric import x25519
 from pqcrypto.kem import ml_kem_768
@@ -45,3 +46,4 @@ def test_tampered_ciphertext_does_not_reproduce_initiator_key():
     damaged["kem_ciphertext"] = bytes([damaged["kem_ciphertext"][0] ^ 1]) + damaged["kem_ciphertext"][1:]
     responder_key = decapsulate(x_private, kem_secret, kem_public, damaged)
     assert responder_key != initiator_key
+
