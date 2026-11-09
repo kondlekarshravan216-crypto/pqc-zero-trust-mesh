@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.12, pytest-9.1.1, pluggy-1.6.0 -- /home/shravan/pqc-zero-trust-mesh/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/shravan/pqc-zero-trust-mesh
+plugins: anyio-4.15.1
+collecting ... collected 5 items
+
+tests/pqc/test_hybrid_kem.py::test_both_parties_derive_same_32_byte_key PASSED [ 20%]
+tests/pqc/test_hybrid_kem.py::test_different_sessions_produce_different_keys PASSED [ 40%]
+tests/pqc/test_hybrid_kem.py::test_invalid_kem_public_key_rejected PASSED [ 60%]
+tests/pqc/test_hybrid_kem.py::test_invalid_ciphertext_length_rejected PASSED [ 80%]
+tests/pqc/test_hybrid_kem.py::test_tampered_ciphertext_does_not_reproduce_initiator_key PASSED [100%]
+
+============================== 5 passed in 0.04s ===============================

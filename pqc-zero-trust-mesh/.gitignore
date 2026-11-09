@@ -1,0 +1,25 @@
+<<<<<<< HEAD
+
+__pycache__/
+*.py[cod]
+=======
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Python environments
+.venv/
+venv/
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+>>>>>>> 5b5deec91e13850a1419c8f11f1a0621275e2596
