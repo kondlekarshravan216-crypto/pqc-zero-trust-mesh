@@ -1,0 +1,24 @@
+
+X25519 Key Generation
+Average: 0.0705 ms
+Median: 0.0411 ms
+Minimum: 0.0404 ms
+Maximum: 11.7164 ms
+
+ML-KEM-768 Key Generation
+Average: 0.0858 ms
+Median: 0.0755 ms
+Minimum: 0.0743 ms
+Maximum: 1.1495 ms
+
+ML-KEM-768 Encapsulation
+Average: 0.1907 ms
+Median: 0.1708 ms
+Minimum: 0.1683 ms
+Maximum: 0.7854 ms
+
+ML-KEM-768 Decapsulation
+Average: 0.3173 ms
+Median: 0.2885 ms
+Minimum: 0.2839 ms
+Maximum: 0.8336 ms
