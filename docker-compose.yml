@@ -17,9 +17,9 @@ services:
       - "info"
     volumes:
       - "./envoy/backend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/backend.crt:/etc/pqzt/certs/backend.crt:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/backend-envoy.key:/etc/pqzt/certs/backend.key:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/vault-root-ca-v3.pem:/etc/pqzt/certs/ca.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/backend.crt:/etc/pqzt/certs/backend.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/backend-envoy.key:/etc/pqzt/certs/backend.key:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/ca.crt:/etc/pqzt/certs/ca.crt:ro"
     ports:
       - "127.0.0.1:18443:8443"
     depends_on:
@@ -53,9 +53,9 @@ services:
       - "info"
     volumes:
       - "./envoy/frontend-envoy.yaml:/etc/envoy/envoy.yaml:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/frontend.crt:/etc/pqzt/certs/frontend.crt:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/issued/frontend-envoy.key:/etc/pqzt/certs/frontend.key:ro"
-      - "${CERT_DIR:?Set CERT_DIR in .env}/vault-root-ca-v3.pem:/etc/pqzt/certs/ca.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/frontend.crt:/etc/pqzt/certs/frontend.crt:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/frontend-envoy.key:/etc/pqzt/certs/frontend.key:ro"
+      - "${CERT_DIR:?Set CERT_DIR in .env}/ca.crt:/etc/pqzt/certs/ca.crt:ro"
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
