@@ -37,7 +37,28 @@ try:
     from vault_pki_coordinator import VaultPKIEngine
     PKI_COORDINATOR = VaultPKIEngine()
 except Exception:
+    VaultPKIEngine = None
     PKI_COORDINATOR = None
+
+
+def get_pki_coordinator():
+    """Returns a VaultPKIEngine synchronized with current Vault daemon availability."""
+    global PKI_COORDINATOR
+    if VaultPKIEngine is None:
+        return None
+    if PKI_COORDINATOR is None:
+        try:
+            PKI_COORDINATOR = VaultPKIEngine()
+        except Exception:
+            return None
+        return PKI_COORDINATOR
+
+    live_healthy = PKI_COORDINATOR.api_client.check_health()
+    if live_healthy and PKI_COORDINATOR.engine_mode != "LIVE_VAULT_HTTP_API":
+        PKI_COORDINATOR = VaultPKIEngine()
+    elif not live_healthy and PKI_COORDINATOR.engine_mode == "LIVE_VAULT_HTTP_API":
+        PKI_COORDINATOR = VaultPKIEngine()
+    return PKI_COORDINATOR
 
 DEFAULT_PORT = 8050
 
@@ -66,10 +87,10 @@ def evaluate_opa_policy(caller_identity: str, destination: str, action: str, pat
         }
     }
 
-    # Attempt 1: Subprocess opa eval
+    # Attempt 1: Subprocess opa eval (--stdin-input reads JSON input from stdin)
     try:
         proc = subprocess.run(
-            ["opa", "eval", "--data", str(OPA_POLICIES_DIR / "authz.rego"), "--input", "-", "data.authz"],
+            ["opa", "eval", "--data", str(OPA_POLICIES_DIR / "authz.rego"), "--stdin-input", "data.authz"],
             input=json.dumps(opa_input),
             capture_output=True,
             text=True,
@@ -204,7 +225,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         genuine_count = sum(1 for e in records if e.get("isGenuine") is True)
         simulated_count = len(records) - genuine_count
 
-        vault_status = PKI_COORDINATOR.get_integration_status() if PKI_COORDINATOR else {}
+        coordinator = get_pki_coordinator()
+        vault_status = coordinator.get_integration_status() if coordinator else {}
 
         status = {
             "status": "healthy",
@@ -216,13 +238,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "genuine_rate_pct": round((genuine_count / len(records) * 100), 1) if records else 100.0,
             "vault_engine_mode": vault_status.get("engine_mode", "STANDALONE_CRYPTOGRAPHIC_EMULATION"),
             "live_vault_healthy": vault_status.get("live_vault_healthy", False),
+            "ca_serial": vault_status.get("ca_serial", ""),
             "pqc_ciphers": ["Hybrid ECDH-P256 + ML-KEM-768", "ML-DSA-65"]
         }
         self.send_json_response(status)
 
     def handle_get_vault_status(self):
-        if PKI_COORDINATOR:
-            self.send_json_response(PKI_COORDINATOR.get_integration_status())
+        coordinator = get_pki_coordinator()
+        if coordinator:
+            self.send_json_response(coordinator.get_integration_status())
         else:
             self.send_json_response({"error": "Vault coordinator uninitialized"}, status=503)
 
@@ -283,17 +307,18 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             common_name = req.get("common_name", "frontend")
             is_server = bool(req.get("is_server", False))
-            if not PKI_COORDINATOR:
+            coordinator = get_pki_coordinator()
+            if not coordinator:
                 self.send_error(503, "Vault engine unavailable")
                 return
 
-            cert_f, key_f, serial, version = PKI_COORDINATOR.renew_certificate(common_name, is_server=is_server)
+            cert_f, key_f, serial, version = coordinator.renew_certificate(common_name, is_server=is_server)
             self.send_json_response({
                 "status": "success",
                 "common_name": common_name,
                 "version": version,
                 "serial": serial,
-                "backend": PKI_COORDINATOR.engine_mode,
+                "backend": coordinator.engine_mode,
                 "isGenuine": True
             })
         except Exception as e:
@@ -304,18 +329,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             serial = req.get("serial")
-            if not serial and PKI_COORDINATOR and PKI_COORDINATOR.certificates:
-                serial = list(PKI_COORDINATOR.certificates.keys())[0]
-
-            if not PKI_COORDINATOR:
+            coordinator = get_pki_coordinator()
+            if not coordinator:
                 self.send_error(503, "Vault engine unavailable")
                 return
 
-            revoked = PKI_COORDINATOR.revoke_certificate(serial or "demo-serial", reason="emergency_dashboard_trigger")
+            if not serial:
+                active_serials = [
+                    s for s, meta in coordinator.certificates.items()
+                    if meta.get("status") == "ACTIVE"
+                ]
+                if active_serials:
+                    serial = active_serials[0]
+                else:
+                    _, _, serial, _ = coordinator.renew_certificate("frontend", is_server=False)
+
+            revoked = coordinator.revoke_certificate(serial, reason="emergency_dashboard_trigger")
             self.send_json_response({
                 "status": "revoked" if revoked else "not_found",
                 "serial": serial,
-                "backend": PKI_COORDINATOR.engine_mode,
+                "backend": coordinator.engine_mode,
                 "isGenuine": True
             })
         except Exception as e:
@@ -352,16 +385,23 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             suite = req.get("suite", "service_path")
 
             if suite == "vault_pki":
-                script = ROOT_DIR / "tests" / "test_vault_pki.py"
+                cmd = [sys.executable, str(ROOT_DIR / "tests" / "test_vault_pki.py")]
+            elif suite == "dashboard":
+                cmd = [sys.executable, str(ROOT_DIR / "tests" / "test_dashboard.py")]
+            elif suite == "opa":
+                if os.name == "nt":
+                    cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(ROOT_DIR / "tests" / "test_opa.ps1")]
+                else:
+                    cmd = ["bash", str(ROOT_DIR / "tests" / "test_opa.sh")]
             else:
-                script = ROOT_DIR / "tests" / "test_service_path.py"
+                cmd = [sys.executable, str(ROOT_DIR / "tests" / "test_service_path.py")]
 
             proc = subprocess.run(
-                [sys.executable, str(script)],
+                cmd,
                 capture_output=True,
                 text=True,
                 cwd=str(ROOT_DIR),
-                timeout=30
+                timeout=60
             )
 
             output = proc.stdout + "\n" + proc.stderr

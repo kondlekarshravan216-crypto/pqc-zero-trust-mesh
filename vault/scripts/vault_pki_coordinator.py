@@ -173,11 +173,23 @@ class VaultAPIClient:
             data = json.loads(resp.read().decode("utf-8"))
             return data.get("data", {})
 
+    @staticmethod
+    def _normalize_serial_hex(serial_number: str) -> str:
+        """Normalizes a certificate serial to lowercase plain hex without separators."""
+        return serial_number.replace(":", "").replace("-", "").strip().lower()
+
+    @classmethod
+    def _format_vault_serial(cls, serial_number: str) -> str:
+        """Formats a serial into hyphen-separated hex octets required by Vault PKI /revoke."""
+        clean = cls._normalize_serial_hex(serial_number)
+        if len(clean) % 2 == 1:
+            clean = "0" + clean
+        return "-".join(clean[i:i + 2] for i in range(0, len(clean), 2))
+
     def revoke_certificate(self, serial_number: str, mount_path: str = "pki_mesh") -> Dict[str, Any]:
         """Revokes a certificate by its serial number."""
         url = f"{self.vault_addr}/v1/{mount_path}/revoke"
-        # Normalize serial: Vault accepts colon-separated or plain hex
-        normalized_serial = serial_number.replace(":", "-").lower()
+        normalized_serial = self._format_vault_serial(serial_number)
         payload = json.dumps({"serial_number": normalized_serial}).encode("utf-8")
         req = urllib.request.Request(url, data=payload, headers=self._headers(), method="POST")
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
@@ -555,19 +567,24 @@ class VaultPKIEngine:
 
     def revoke_certificate(self, serial_hex: str, reason: str = "key_compromise") -> bool:
         """Revokes a certificate serial in Vault and updates CRL."""
+        serial_hex = VaultAPIClient._normalize_serial_hex(serial_hex)
         if serial_hex not in self.certificates:
             return False
 
         cert_meta = self.certificates[serial_hex]
-        cert_meta["status"] = "REVOKED"
-        self.revoked_serials.add(cert_meta["serial_int"])
 
-        # 1. Attempt Live Vault API Revocation
+        # 1. Attempt Live Vault API Revocation before marking local state
         if self.engine_mode == "LIVE_VAULT_HTTP_API":
             try:
                 self.api_client.revoke_certificate(serial_hex, "pki_mesh")
-            except Exception:
-                pass
+            except Exception as api_err:
+                if not hasattr(self, "ca_key") or self.ca_key is None:
+                    raise RuntimeError(
+                        f"Vault API certificate revocation failed (LIVE_VAULT_HTTP_API mode): {api_err}"
+                    ) from api_err
+
+        cert_meta["status"] = "REVOKED"
+        self.revoked_serials.add(cert_meta["serial_int"])
 
         # 2. Update CRL
         self._generate_crl()
@@ -595,10 +612,22 @@ class VaultPKIEngine:
         return True
 
     def is_revoked(self, serial_hex: str) -> bool:
-        """Checks if a serial number is in the CRL."""
-        if serial_hex in self.certificates:
-            return self.certificates[serial_hex]["serial_int"] in self.revoked_serials
-        return False
+        """Checks if a serial number is revoked in the active CRL or local revocation index."""
+        serial_hex = VaultAPIClient._normalize_serial_hex(serial_hex)
+        if serial_hex not in self.certificates:
+            return False
+        serial_int = self.certificates[serial_hex]["serial_int"]
+        if self.crl_pem:
+            try:
+                crl = x509.load_pem_x509_crl(self.crl_pem)
+                if crl.get_revoked_certificate_by_serial_number(serial_int) is not None:
+                    return True
+                # In live Vault mode, treat Vault's CRL as authoritative
+                if self.engine_mode == "LIVE_VAULT_HTTP_API":
+                    return False
+            except Exception:
+                pass
+        return serial_int in self.revoked_serials
 
     def get_integration_status(self) -> Dict[str, Any]:
         """Provides an audit breakdown of actual Vault integration vs simulation fallback."""

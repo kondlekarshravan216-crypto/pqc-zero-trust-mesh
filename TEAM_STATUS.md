@@ -38,6 +38,7 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - [x] Month 2 Day 1: Expanded OPA policies and test suite to 28/28 passing (18 Rego unit tests + 10 contract tests) enforcing three-tier zero-trust microsegmentation
 - [x] Month 2 Day 1: Upgraded dashboard server and UI to distinguish genuine security events from simulated events, with live OPA policy evaluation endpoint (`/api/evaluate-opa`) and provenance badges
 - [x] Month 2 Day 1: Published comprehensive integration status report `docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md`
+- [x] Month 2 Integration Verification (Nov 10): Verified all OPA allow/deny tests (28/28 + 15/15 service path), verified live Vault PKI API issuance/revocation/CRL connectivity (`LIVE_VAULT_HTTP_API`, 14/14), fixed `opa eval --stdin-input` and Vault serial revocation formatting, verified dashboard runtime telemetry (`tests/test_dashboard.py`, 4/4), aligned test counts (**61/61**), and prepared PR against `develop` (`docs/PULL_REQUEST_DEVELOP.md`)
 
 ## Pending Work
 - [ ] Add/verify all GitHub collaborators
@@ -86,7 +87,7 @@ Post-Quantum Zero-Trust Microsegmentation Mesh
 - Record actual test results; do not claim unverified integration.
 
 ## Next Checkpoint
-Merge the OPA/Vault PR (`docs/PULL_REQUEST_DAY6.md`) into develop. Integrate Member 3's hybrid ECDH + ML-KEM prototype with the existing mTLS infrastructure. Begin cross-component end-to-end integration testing with Kubernetes NetworkPolicies and live Envoy containers.
+Review and merge `feature/opa-vault` into `develop` via PR (`docs/PULL_REQUEST_DEVELOP.md`). Integrate Member 3's hybrid ECDH + ML-KEM prototype with the existing mTLS infrastructure. Begin cross-component end-to-end integration testing with Kubernetes NetworkPolicies and live Envoy containers.
 
 ## Hybrid ECDH + ML-KEM — 18 Oct 2026
 

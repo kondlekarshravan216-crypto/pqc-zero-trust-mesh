@@ -86,12 +86,12 @@
         <div class="header-right">
           <div class="status-pill active-pill" id="mesh-health-pill">
             <span class="pulse-dot green"></span>
-            <span class="pill-label">Mesh: 100% Policy Enforced</span>
+            <span class="pill-label" id="mesh-health-pill-label">Mesh: 100% Policy Enforced</span>
           </div>
           
           <div class="status-pill" id="vault-pki-pill">
             <span class="pulse-dot cyan"></span>
-            <span class="pill-label">Vault PKI: Active (pki_mesh)</span>
+            <span class="pill-label" id="vault-pki-pill-label">Vault PKI: Active (pki_mesh)</span>
           </div>
 
           <div class="status-pill" id="telemetry-provenance-pill">
@@ -571,6 +571,12 @@
       </div>
       <div class="modal-body">
         <div class="test-runner-actions">
+          <button class="btn btn-outline" id="btn-exec-opa-tests">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Execute OPA Policy Suite (28 Tests)
+          </button>
           <button class="btn btn-primary" id="btn-exec-service-tests">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -581,7 +587,13 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            Execute Vault PKI & Rotation Suite (11 Tests)
+            Execute Vault PKI & Rotation Suite (14 Tests)
+          </button>
+          <button class="btn btn-outline" id="btn-exec-dashboard-tests">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Execute Dashboard Runtime Suite (4 Tests)
           </button>
         </div>
         <div class="test-terminal" id="test-terminal-output">

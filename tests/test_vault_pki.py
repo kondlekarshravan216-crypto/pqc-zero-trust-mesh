@@ -322,15 +322,21 @@ def main():
             f"Revoked serial: {fs_v1}"
         )
 
-        # Test 9: CRL Generation & Verification
+        # Test 9: CRL Generation & Verification (cryptographically parse PEM CRL)
         crl_has_data = pki.crl_pem is not None and len(pki.crl_pem) > 200
+        v1_in_crl = False
+        v2_not_in_crl = False
+        if crl_has_data:
+            parsed_crl = x509.load_pem_x509_crl(pki.crl_pem)
+            v1_in_crl = parsed_crl.get_revoked_certificate_by_serial_number(int(fs_v1, 16)) is not None
+            v2_not_in_crl = parsed_crl.get_revoked_certificate_by_serial_number(int(fs_v2, 16)) is None
         active_not_revoked = not pki.is_revoked(fs_v2)
         record_result(
             "Revocation Workflow",
             "Vault CRL Generation & Active Status Integrity",
             "CRL contains revoked V1 serial while active V2 serial is NOT revoked",
-            f"crl_valid={crl_has_data}, v1_revoked=True, v2_active={active_not_revoked}",
-            crl_has_data and active_not_revoked,
+            f"crl_valid={crl_has_data}, v1_revoked={v1_in_crl}, v2_active={active_not_revoked and v2_not_in_crl}",
+            crl_has_data and v1_in_crl and v2_not_in_crl and active_not_revoked,
             "Workload operations continue uninterrupted on renewed credentials"
         )
 
@@ -377,12 +383,13 @@ def main():
         headers = client._headers()
         has_token = headers.get("X-Vault-Token") == "test-root-token"
         has_json_ct = headers.get("Content-Type") == "application/json"
-        is_client_valid = has_token and has_json_ct and client.vault_addr == "http://127.0.0.1:8200"
+        serial_fmt_ok = client._format_vault_serial("011f93cb:3de0") == "01-1f-93-cb-3d-e0"
+        is_client_valid = has_token and has_json_ct and serial_fmt_ok and client.vault_addr == "http://127.0.0.1:8200"
         record_result(
             "Vault API Integration",
             "Vault HTTP REST API Client Endpoint & Header Contract",
             "X-Vault-Token and Content-Type: application/json properly formatted",
-            f"has_token={has_token}, content_type={headers.get('Content-Type')}",
+            f"has_token={has_token}, content_type={headers.get('Content-Type')}, serial_fmt={serial_fmt_ok}",
             is_client_valid,
             "Complies with official HashiCorp Vault PKI HTTP API specifications"
         )

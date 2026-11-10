@@ -113,6 +113,17 @@ async function loadTelemetryData(showNotice = false) {
       }
     }
 
+    // Fetch live runtime component status (OPA CLI + Vault engine mode + CA serial)
+    try {
+      const statusResp = await fetch('/api/status');
+      if (statusResp.ok) {
+        const statusData = await statusResp.json();
+        updateRuntimeStatusPills(statusData);
+      }
+    } catch (e) {
+      // Ignore if opened statically without backend server
+    }
+
     if (events && events.length > 0) {
       state.events = events;
       updateKPIs();
@@ -126,6 +137,29 @@ async function loadTelemetryData(showNotice = false) {
     }
   } catch (err) {
     console.warn('Telemetry fetch error:', err);
+  }
+}
+
+function updateRuntimeStatusPills(statusData) {
+  if (!statusData) return;
+  if (statusData.ca_serial) {
+    state.caSerial = statusData.ca_serial;
+    const elCaSerial = document.getElementById('ca-serial');
+    if (elCaSerial) elCaSerial.textContent = state.caSerial;
+  }
+
+  const elMeshLabel = document.getElementById('mesh-health-pill-label');
+  if (elMeshLabel) {
+    elMeshLabel.textContent = statusData.opa_installed
+      ? 'Mesh: OPA CLI Live (ext_authz)'
+      : 'Mesh: Policy Fallback Mode';
+  }
+
+  const elVaultLabel = document.getElementById('vault-pki-pill-label');
+  if (elVaultLabel) {
+    elVaultLabel.textContent = statusData.live_vault_healthy
+      ? 'Vault PKI: Live API (pki_mesh)'
+      : 'Vault PKI: Emulation (pki_mesh)';
   }
 }
 
@@ -172,10 +206,24 @@ function updateKPIs() {
   }
 
   // Update SDS metrics
+  const elSdsActive = document.getElementById('sds-active-leafs');
   const elSdsRenewals = document.getElementById('sds-renewals');
   const elSdsRevoked = document.getElementById('sds-revoked');
   const elCaSerial = document.getElementById('ca-serial');
 
+  const revokedSerials = new Set(
+    rotationEvents
+      .filter(e => e.status === 'REVOKED' || e.rotationType === 'emergency_revocation')
+      .map(e => e.serialNumber)
+      .filter(Boolean)
+  );
+  const activeSerials = new Set(
+    rotationEvents
+      .filter(e => e.status === 'SUCCESS' && e.serialNumber && !revokedSerials.has(e.serialNumber))
+      .map(e => e.serialNumber)
+  );
+
+  if (elSdsActive) elSdsActive.textContent = activeSerials.size || state.activeCertificates.length;
   if (elSdsRenewals) elSdsRenewals.textContent = rotations;
   if (elSdsRevoked) elSdsRevoked.textContent = revocations;
   if (elCaSerial) elCaSerial.textContent = state.caSerial;
@@ -323,7 +371,7 @@ function renderEventsTable() {
   const sourceFilter = document.getElementById('filter-event-source')?.value || 'all';
   const query = (document.getElementById('events-search')?.value || '').toLowerCase();
 
-  const allEvents = [...state.events].reverse();
+  const allEvents = state.events.map((e, origIdx) => ({ ...e, _origIdx: origIdx })).reverse();
   const filtered = allEvents.filter(e => {
     if (categoryFilter !== 'all' && e.category !== categoryFilter) return false;
     if (severityFilter !== 'all' && e.severity !== severityFilter) return false;
@@ -341,7 +389,7 @@ function renderEventsTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map((e, idx) => {
+  tbody.innerHTML = filtered.map(e => {
     const sev = e.severity || 'INFO';
     const sevClass = sev === 'CRITICAL' ? 'danger' : (sev === 'HIGH' ? 'danger' : (sev === 'WARNING' ? 'warning' : 'success'));
     const identity = e.sourceIdentity || e.serviceIdentity || e.clientIp || '--';
@@ -360,7 +408,7 @@ function renderEventsTable() {
         <td>${decision}</td>
         <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(desc)}">${escapeHtml(desc)}</td>
         <td>
-          <button class="btn btn-sm btn-outline" onclick="viewEventDetails(${state.events.length - 1 - idx})">JSON</button>
+          <button class="btn btn-sm btn-outline" onclick="viewEventDetails(${e._origIdx})">JSON</button>
         </td>
       </tr>
     `;
@@ -633,6 +681,11 @@ function setupModals() {
     testsModal.style.display = 'none';
   });
 
+  // Run OPA Policy Suite (28 Tests)
+  document.getElementById('btn-exec-opa-tests')?.addEventListener('click', () => {
+    runSuite('opa');
+  });
+
   // Run Service Request Path Suite (15 Tests)
   document.getElementById('btn-exec-service-tests')?.addEventListener('click', () => {
     runSuite('service_path');
@@ -641,6 +694,11 @@ function setupModals() {
   // Run Vault PKI & Rotation Suite (14 Tests)
   document.getElementById('btn-exec-vault-tests')?.addEventListener('click', () => {
     runSuite('vault_pki');
+  });
+
+  // Run Dashboard Runtime Telemetry Suite (4 Tests)
+  document.getElementById('btn-exec-dashboard-tests')?.addEventListener('click', () => {
+    runSuite('dashboard');
   });
 }
 
