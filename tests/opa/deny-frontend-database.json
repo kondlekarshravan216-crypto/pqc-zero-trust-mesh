@@ -1,4 +1,4 @@
-﻿{
+{
   "source": "frontend",
   "destination": "database",
   "action": "read"

@@ -17,12 +17,7 @@ Coordinating:
 """
 
 import os
-import sys
 import json
-import time
-import socket
-import ssl
-import threading
 import urllib.request
 import urllib.error
 import datetime as dt
@@ -60,12 +55,16 @@ class VaultAPIClient:
         self.vault_token = vault_token or os.environ.get("VAULT_TOKEN", "root")
         self.timeout = timeout
 
-    def _headers(self) -> Dict[str, str]:
+    def build_headers(self) -> Dict[str, str]:
+        """Builds standard Vault HTTP API authentication and JSON headers."""
         return {
             "X-Vault-Token": self.vault_token,
             "Content-Type": "application/json",
             "User-Agent": "PQC-ZeroTrust-Mesh-VaultClient/1.0"
         }
+
+    def _headers(self) -> Dict[str, str]:
+        return self.build_headers()
 
     def check_health(self) -> bool:
         """Checks if live Vault daemon is reachable and unsealed."""
@@ -174,14 +173,14 @@ class VaultAPIClient:
             return data.get("data", {})
 
     @staticmethod
-    def _normalize_serial_hex(serial_number: str) -> str:
+    def normalize_serial_hex(serial_number: str) -> str:
         """Normalizes a certificate serial to lowercase plain hex without separators."""
         return serial_number.replace(":", "").replace("-", "").strip().lower()
 
     @classmethod
-    def _format_vault_serial(cls, serial_number: str) -> str:
+    def format_vault_serial(cls, serial_number: str) -> str:
         """Formats a serial into hyphen-separated hex octets required by Vault PKI /revoke."""
-        clean = cls._normalize_serial_hex(serial_number)
+        clean = cls.normalize_serial_hex(serial_number)
         if len(clean) % 2 == 1:
             clean = "0" + clean
         return "-".join(clean[i:i + 2] for i in range(0, len(clean), 2))
@@ -189,7 +188,7 @@ class VaultAPIClient:
     def revoke_certificate(self, serial_number: str, mount_path: str = "pki_mesh") -> Dict[str, Any]:
         """Revokes a certificate by its serial number."""
         url = f"{self.vault_addr}/v1/{mount_path}/revoke"
-        normalized_serial = self._format_vault_serial(serial_number)
+        normalized_serial = self.format_vault_serial(serial_number)
         payload = json.dumps({"serial_number": normalized_serial}).encode("utf-8")
         req = urllib.request.Request(url, data=payload, headers=self._headers(), method="POST")
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
@@ -288,7 +287,7 @@ class VaultPKIEngine:
                 crl_file = self.work_dir / "crl.pem"
                 crl_file.write_bytes(self.crl_pem)
                 return
-            except Exception as e:
+            except Exception:
                 # Fall back to emulation if live call failed
                 self.engine_mode = "STANDALONE_CRYPTOGRAPHIC_EMULATION"
 
@@ -454,8 +453,6 @@ class VaultPKIEngine:
                         f"Vault API certificate issuance failed and no emulation "
                         f"fallback is available (LIVE_VAULT_HTTP_API mode): {api_err}"
                     ) from api_err
-                # Otherwise fall through to emulation
-                pass
 
         # 2. Cryptographic Emulation Issuance
         key = ec.generate_private_key(ec.SECP256R1())
@@ -567,7 +564,7 @@ class VaultPKIEngine:
 
     def revoke_certificate(self, serial_hex: str, reason: str = "key_compromise") -> bool:
         """Revokes a certificate serial in Vault and updates CRL."""
-        serial_hex = VaultAPIClient._normalize_serial_hex(serial_hex)
+        serial_hex = VaultAPIClient.normalize_serial_hex(serial_hex)
         if serial_hex not in self.certificates:
             return False
 
@@ -613,7 +610,7 @@ class VaultPKIEngine:
 
     def is_revoked(self, serial_hex: str) -> bool:
         """Checks if a serial number is revoked in the active CRL or local revocation index."""
-        serial_hex = VaultAPIClient._normalize_serial_hex(serial_hex)
+        serial_hex = VaultAPIClient.normalize_serial_hex(serial_hex)
         if serial_hex not in self.certificates:
             return False
         serial_int = self.certificates[serial_hex]["serial_int"]

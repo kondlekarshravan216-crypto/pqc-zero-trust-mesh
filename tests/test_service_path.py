@@ -12,7 +12,6 @@ Verifies:
 """
 
 import sys
-import os
 import time
 import socket
 import ssl
@@ -81,8 +80,6 @@ def record_result(category, name, expected, actual, passed, details=""):
         "details": details
     })
     
-    color = "\033[92m" if passed else "\033[91m"
-    reset = "\033[0m"
     print(f"[{status}] Test {TOTAL_TESTS}: {name}")
     print(f"       Expected: {expected} | Actual: {actual}")
     if details:
@@ -517,7 +514,7 @@ def main():
             "HTTP 200 OK with opa_decision: allow",
             f"HTTP {code}",
             code == 200 and "opa_decision\": \"allow" in resp,
-            f"Client SVID: spiffe://pqzt.local/ns/demo/sa/frontend"
+            "Client SVID: spiffe://pqzt.local/ns/demo/sa/frontend"
         )
 
         # Test 2: Authorized frontend request (Cluster SPIFFE SVID)
@@ -528,7 +525,7 @@ def main():
             "HTTP 200 OK with opa_decision: allow",
             f"HTTP {code}",
             code == 200 and "opa_decision\": \"allow" in resp,
-            f"Client SVID: spiffe://cluster.local/ns/mesh/sa/frontend-service"
+            "Client SVID: spiffe://cluster.local/ns/mesh/sa/frontend-service"
         )
 
         # Test 3: Unauthorized Identity (Valid CA Cert, Unapproved SPIFFE ID)
@@ -539,7 +536,7 @@ def main():
             "HTTP 403 Forbidden with opa_decision: deny",
             f"HTTP {code}",
             code == 403 and "opa_decision\": \"deny" in resp,
-            f"Client SVID: spiffe://pqzt.local/ns/demo/sa/unapproved-attacker"
+            "Client SVID: spiffe://pqzt.local/ns/demo/sa/unapproved-attacker"
         )
 
         # Test 4: Lateral Movement Restriction (Authorized Frontend attempting /database)
@@ -550,7 +547,7 @@ def main():
             "HTTP 403 Forbidden with Access Denied",
             f"HTTP {code}",
             code == 403 and "Access denied" in resp,
-            f"Destination: database, Source: frontend"
+            "Destination: database, Source: frontend"
         )
 
         # Test 5: Unauthorized Action/Method (Authorized Frontend attempting DELETE)
@@ -561,7 +558,7 @@ def main():
             "HTTP 403 Forbidden with Access Denied",
             f"HTTP {code}",
             code == 403 and "Access denied" in resp,
-            f"Action: DELETE"
+            "Action: DELETE"
         )
 
         # Test 6: Missing Client Certificate (Authentication Failure)
@@ -613,7 +610,7 @@ def main():
             f"New Serial != {serial_v1}",
             f"Serial V2: {serial_v2}",
             serial_v2 != serial_v1,
-            f"Keypair rotated: True"
+            "Keypair rotated: True"
         )
 
         # Test 10: Seamless Request with Rotated Frontend Certificate V2
@@ -780,7 +777,7 @@ def main():
     md_lines = [
         "# Service Request Path Authorization & Secret Management Results",
         f"**Date**: {dt.datetime.now(dt.timezone.utc).isoformat()}  ",
-        f"**Module**: OPA Authorization, Service Request Path Integration, Vault & Certificate Rotation  ",
+        "**Module**: OPA Authorization, Service Request Path Integration, Vault & Certificate Rotation  ",
         f"**Overall Status**: {'ALL TESTS PASSED (100%)' if FAILED_TESTS == 0 else 'TESTS FAILED'}  ",
         "",
         "## Summary of Test Results",

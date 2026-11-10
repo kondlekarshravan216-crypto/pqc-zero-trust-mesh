@@ -22,7 +22,6 @@ Tests:
 """
 
 import sys
-import os
 import json
 import time
 import socket
@@ -30,11 +29,10 @@ import ssl
 import threading
 import datetime as dt
 from pathlib import Path
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple
 
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import hashes
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR / "vault" / "scripts"))
@@ -85,6 +83,7 @@ class DynamicTLSServer:
         self.running = False
         self.sock = None
         self.port = 0
+        self.thread = None
         self.lock = threading.Lock()
         self.requests_handled = 0
         self.build_ssl_context()
@@ -129,7 +128,7 @@ class DynamicTLSServer:
                 san = [v for k, v in peer_cert.get("subjectAltName", ()) if k == "URI"]
 
                 # Check request
-                data = tls_conn.recv(2048)
+                _ = tls_conn.recv(2048)
                 body = json.dumps({
                     "service": "backend",
                     "status": "ok",
@@ -288,14 +287,14 @@ def main():
         record_result(
             "Certificate Renewal",
             "Automated Workload Certificate Renewal (Frontend V2)",
-            f"Fresh keypair & serial generated (V2 != V1)",
+            "Fresh keypair & serial generated (V2 != V1)",
             f"Serial V2: {fs_v2[:12]}... (version {v_num})",
             v_num == 2 and fs_v2 != fs_v1 and fc_v2.exists(),
             "Simulates Vault Agent / SPIRE scheduled renewal at 66% TTL"
         )
 
         # Test 7: Zero-Downtime Server TLS Context Hot-Swap (Envoy SDS model)
-        bc_v2, bk_v2, bs_v2, b_vnum = pki.renew_certificate("backend", is_server=True)
+        bc_v2, bk_v2, _, b_vnum = pki.renew_certificate("backend", is_server=True)
         server.reload_tls_context(bc_v2, bk_v2)
 
         # Immediate client request after server hot reload
@@ -380,10 +379,10 @@ def main():
 
         # Test 12: Vault HTTP REST API Client Contract
         client = VaultAPIClient("http://127.0.0.1:8200", "test-root-token")
-        headers = client._headers()
+        headers = client.build_headers()
         has_token = headers.get("X-Vault-Token") == "test-root-token"
         has_json_ct = headers.get("Content-Type") == "application/json"
-        serial_fmt_ok = client._format_vault_serial("011f93cb:3de0") == "01-1f-93-cb-3d-e0"
+        serial_fmt_ok = client.format_vault_serial("011f93cb:3de0") == "01-1f-93-cb-3d-e0"
         is_client_valid = has_token and has_json_ct and serial_fmt_ok and client.vault_addr == "http://127.0.0.1:8200"
         record_result(
             "Vault API Integration",
@@ -466,7 +465,7 @@ def main():
     lines = [
         "# Vault PKI Setup, Certificate Renewal & Rotation Results",
         f"**Date**: {dt.datetime.now(dt.timezone.utc).isoformat()}  ",
-        f"**Module**: Vault PKI Secrets Engine, Dynamic Rotation & CRL Revocation  ",
+        "**Module**: Vault PKI Secrets Engine, Dynamic Rotation & CRL Revocation  ",
         f"**Status**: {'ALL TESTS PASSED (100%)' if FAILED_TESTS == 0 else 'TESTS FAILED'}  ",
         "",
         "## Summary of Test Results",

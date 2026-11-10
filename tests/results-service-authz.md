@@ -1,5 +1,5 @@
 # Service Request Path Authorization & Secret Management Results
-**Date**: 2026-11-10T14:14:57.122721+00:00  
+**Date**: 2026-11-10T14:20:53.407115+00:00  
 **Module**: OPA Authorization, Service Request Path Integration, Vault & Certificate Rotation  
 **Overall Status**: ALL TESTS PASSED (100%)  
 
@@ -12,12 +12,12 @@
 | 3 | Service Request Path | Unapproved Workload SVID -> Backend [DENY] | `HTTP 403 Forbidden with opa_decision: deny` | `HTTP 403` | **PASS** | Client SVID: spiffe://pqzt.local/ns/demo/sa/unapproved-attacker |
 | 4 | Service Request Path | Frontend Lateral Movement -> Database [DENY] | `HTTP 403 Forbidden with Access Denied` | `HTTP 403` | **PASS** | Destination: database, Source: frontend |
 | 5 | Service Request Path | Unauthorized Mutating Action (DELETE) [DENY] | `HTTP 403 Forbidden with Access Denied` | `HTTP 403` | **PASS** | Action: DELETE |
-| 6 | Transport Security | Missing Client Certificate Handshake Rejection [DENY] | `Handshake / connection rejected before HTTP layer` | `Code -1: SSLError: TLSV13_ALERT_CERTIFICATE_REQUI` | **PASS** | Enforces mutual TLS client certificate requirement |
+| 6 | Transport Security | Missing Client Certificate Handshake Rejection [DENY] | `Handshake / connection rejected before HTTP layer` | `Code -2: ConnectionError: [WinError 10054] An exi` | **PASS** | Enforces mutual TLS client certificate requirement |
 | 7 | Transport Security | Untrusted CA Client Certificate Rejection [DENY] | `SSLError / Handshake rejected by server` | `Code -2: ConnectionError: [WinError 10054] An exi` | **PASS** | Client cert issued by Rogue CA rejected by Mesh CA trust chain |
 | 8 | Transport Security | Expired Client Certificate Rejection [DENY] | `SSLError / Handshake rejected (expired)` | `Code -2: ConnectionError: [WinError 10054] An exi` | **PASS** | Real CA signature rejected due to expired validity window |
-| 9 | Certificate Rotation | Issue Renewed Leaf Certificate V2 (New Keypair & Serial) | `New Serial != 6489406136396767299839450072673095077796718167` | `Serial V2: 594196944500419265825912505150869038680111903526` | **PASS** | Keypair rotated: True |
+| 9 | Certificate Rotation | Issue Renewed Leaf Certificate V2 (New Keypair & Serial) | `New Serial != 611922579180325879618846830405434238708937899470` | `Serial V2: 219478403051743517817937611432163485068446700904` | **PASS** | Keypair rotated: True |
 | 10 | Certificate Rotation | Client Handshake with Rotated Certificate V2 [ALLOW] | `HTTP 200 OK with opa_decision: allow` | `HTTP 200` | **PASS** | Service immediately honors rotated client credentials |
-| 11 | Certificate Rotation | Server Hot Reload & Client Re-handshake (Envoy SDS model) [ALLOW] | `HTTP 200 OK after hot reload with zero downtime` | `HTTP 200` | **PASS** | Server Cert Serial rotated to 651342273514684724024069535583258344994771596091 |
+| 11 | Certificate Rotation | Server Hot Reload & Client Re-handshake (Envoy SDS model) [ALLOW] | `HTTP 200 OK after hot reload with zero downtime` | `HTTP 200` | **PASS** | Server Cert Serial rotated to 325780646645432569983877641692416045281160380624 |
 | 12 | Vault Configuration | Vault Server Dev Config (vault-dev.hcl) Security Perimeter | `Loopback binding, local file storage, UI enabled` | `loopback=True, file_store=True, ui=True` | **PASS** | Restricts unauthenticated dev traffic strictly to local host |
 | 13 | Vault Policy | Vault Least-Privilege Policy (mesh-secrets.hcl) Zero-Trust Immutability | `create/read/update permitted, delete/destroy/sudo strictly absent` | `kv_data=True, cru=True, no_delete=True` | **PASS** | Enforces zero-trust: workloads cannot purge audit logs or versions |
 | 14 | Secret Management Workflow | Vault KV v2 Secret Retrieval, Rotation & Rollback Lifecycle | `Put V1 -> Read V1 -> Rotate V2 -> Rollback V1 supported` | `Versions=[1, 2], Latest=rotated-secret-...` | **PASS** | Proves version history retention allows disaster recovery |

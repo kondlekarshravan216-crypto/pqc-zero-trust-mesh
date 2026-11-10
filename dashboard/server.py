@@ -94,7 +94,8 @@ def evaluate_opa_policy(caller_identity: str, destination: str, action: str, pat
             input=json.dumps(opa_input),
             capture_output=True,
             text=True,
-            timeout=2.0
+            timeout=2.0,
+            check=False
         )
         if proc.returncode == 0:
             parsed = json.loads(proc.stdout)
@@ -210,7 +211,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_get_status(self):
         opa_installed = False
         try:
-            r = subprocess.run(["opa", "version"], capture_output=True, text=True, timeout=2)
+            r = subprocess.run(["opa", "version"], capture_output=True, text=True, timeout=2, check=False)
             opa_installed = (r.returncode == 0)
         except Exception:
             opa_installed = False
@@ -312,7 +313,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 self.send_error(503, "Vault engine unavailable")
                 return
 
-            cert_f, key_f, serial, version = coordinator.renew_certificate(common_name, is_server=is_server)
+            _, _, serial, version = coordinator.renew_certificate(common_name, is_server=is_server)
             self.send_json_response({
                 "status": "success",
                 "common_name": common_name,
@@ -401,7 +402,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 capture_output=True,
                 text=True,
                 cwd=str(ROOT_DIR),
-                timeout=60
+                timeout=60,
+                check=False
             )
 
             output = proc.stdout + "\n" + proc.stderr

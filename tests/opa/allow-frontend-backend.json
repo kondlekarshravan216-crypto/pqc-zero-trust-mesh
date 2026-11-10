@@ -1,4 +1,4 @@
-﻿{
+{
   "source": "frontend",
   "destination": "backend",
   "action": "read"
