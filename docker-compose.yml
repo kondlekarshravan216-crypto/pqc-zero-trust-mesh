@@ -5,7 +5,7 @@ services:
     volumes:
       - "./backend/app.py:/app/app.py:ro"
     networks:
-      - mesh
+      - backend_internal
 
   backend-envoy:
     image: envoyproxy/envoy:v1.39.3
@@ -26,7 +26,9 @@ services:
       - backend-app
       - opa-service
     networks:
-      - mesh
+      - frontend_backend
+      - backend_internal
+      - opa_authz
 
   opa-service:
     image: openpolicyagent/opa:1.22.2-envoy
@@ -42,7 +44,7 @@ services:
     ports:
       - "127.0.0.1:8181:8181"
     networks:
-      - mesh
+      - opa_authz
 
   frontend-envoy:
     image: envoyproxy/envoy:v1.39.3
@@ -62,7 +64,14 @@ services:
     depends_on:
       - backend-envoy
     networks:
-      - mesh
+      - frontend_backend
 
 networks:
-  mesh: {}
+  # Only frontend Envoy and backend Envoy share this east-west network.
+  frontend_backend: {}
+  # Backend application is isolated from frontend Envoy and OPA.
+  backend_internal:
+    internal: true
+  # Only backend Envoy can call the OPA Envoy ext_authz gRPC endpoint.
+  opa_authz:
+    internal: true
