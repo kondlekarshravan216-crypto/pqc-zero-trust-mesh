@@ -19,13 +19,11 @@ Needed from you: confirm namespace, Service names, sidecar vs. standalone Envoy,
 
 ## PQC teammate
 
-**Environment facts vary by test environment.** Earlier offline tests used OpenSSL 3.0.13 and did not support `X25519MLKEM768`; live frontend upstream Envoy statistics confirmed `cluster.backend_mtls.ssl.curves.X25519MLKEM768: 3`, `cluster.backend_mtls.ssl.versions.TLSv1.3: 3`, and `cluster.backend_mtls.ssl.handshake: 3`, with zero connection and certificate-verification errors.
+**Evidence recorded in this repository:** one integration note reports frontend Envoy upstream counters for `cluster.backend_mtls` with `X25519MLKEM768: 3`, TLS 1.3 and three handshakes. Separately, `reports/live-envoy-mtls-validation.txt` (3 November 2026) explicitly says its hybrid handshake was a direct TLS connection to the backend and that frontend-to-backend hybrid negotiation remained unverified at that time. The dated packet-capture report also shows `X25519MLKEM768` in a TLS 1.3 ServerHello. These artefacts come from separate runs and do not, by themselves, establish the negotiated group for every current deployment or connection. Re-run and capture the exact frontend-Envoy → backend-Envoy flow before making a universal claim.
 
-**PQC status: HYBRID KEY-EXCHANGE NEGOTIATION VERIFIED for the tested frontend-Envoy-to-backend-Envoy connection.**
+Classical fallback was verified in an isolated Envoy-to-Envoy test: the temporary backend was restricted to X25519, the frontend request returned HTTP 200, and frontend statistics reported `cluster.backend_mtls.ssl.curves.X25519: 1` and `cluster.backend_mtls.ssl.handshake: 1`. This verifies fallback for that isolated configuration; it does not establish the active policy of every deployment.
 
-Classical fallback was verified in an isolated Envoy-to-Envoy test: the temporary backend was restricted to X25519, the frontend request returned HTTP 200, and frontend statistics reported `cluster.backend_mtls.ssl.curves.X25519: 1` and `cluster.backend_mtls.ssl.handshake: 1`. This verifies fallback for the isolated test configuration; it does not establish that the original live stack was changed or that hybrid negotiation was disabled there. ML-DSA certificate signatures remain unimplemented.
-
-What exists today is classical: ECDSA P-256 certs, TLS 1.3, X25519, AES-256-GCM. Certificates and mTLS *authentication* are independent of key establishment; a quantum adversary recording traffic today can break X25519 later. Hybrid key exchange (e.g. `X25519MLKEM768`) protects confidentiality only; certificates stay classical (ECDSA) unless PQ signatures are added separately.
+The workload certificate profiles in `pki/ext/` use ECDSA P-256 and ECDSA-SHA256. Hybrid key exchange and certificate signatures are separate concerns: the former can protect session confidentiality when negotiated, while classical ECDSA certificate authentication remains vulnerable to a sufficiently capable quantum adversary. ML-DSA certificate signatures remain unimplemented.
 
 Open items before any PQC claim:
 
