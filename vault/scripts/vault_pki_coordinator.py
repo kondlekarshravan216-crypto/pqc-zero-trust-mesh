@@ -349,12 +349,15 @@ class VaultPKIEngine:
         """Builds CRL containing revoked certificate serial numbers."""
         if self.engine_mode == "LIVE_VAULT_HTTP_API":
             try:
-                self.crl_pem = self.api_client.get_crl("pki_mesh")
+                crl_pem = self.api_client.get_crl("pki_mesh")
+                x509.load_pem_x509_crl(crl_pem)
                 crl_file = self.work_dir / "crl.pem"
-                crl_file.write_bytes(self.crl_pem)
+                crl_file.write_bytes(crl_pem)
+                self.crl_pem = crl_pem
                 return
-            except Exception:
-                pass
+            except Exception as exc:
+                # Never replace a live Vault CRL with a locally signed emulated CRL.
+                raise RuntimeError(f"Live Vault CRL retrieval/validation failed: {exc}") from exc
 
         # Emulation CRL generation
         builder = x509.CertificateRevocationListBuilder()
@@ -561,27 +564,56 @@ class VaultPKIEngine:
         return cert_f, key_f, new_serial, next_version
 
     def revoke_certificate(self, serial_hex: str, reason: str = "key_compromise") -> bool:
-        """Revokes a certificate serial in Vault and updates CRL."""
-        if serial_hex not in self.certificates:
-            return False
+        """Revoke a serial in the selected backend; never claim success before CRL confirmation."""
+        normalized_serial = str(serial_hex).replace(":", "").replace("-", "").lower()
+        if (
+            len(normalized_serial) < 8
+            or len(normalized_serial) > 128
+            or any(ch not in "0123456789abcdef" for ch in normalized_serial)
+        ):
+            raise ValueError("Certificate serial must contain 8-128 hexadecimal characters")
 
-        cert_meta = self.certificates[serial_hex]
+        cert_meta = self.certificates.get(normalized_serial)
+
+        if self.engine_mode == "LIVE_VAULT_HTTP_API":
+            # Vault is authoritative in live mode. A serial may have been issued
+            # before this process started, so do not require in-memory metadata.
+            self.api_client.revoke_certificate(normalized_serial, "pki_mesh")
+            self._generate_crl()  # fetches and validates the actual Vault CRL; raises on failure
+            if cert_meta:
+                cert_meta["status"] = "REVOKED"
+            event = {
+                "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+                "eventType": "key_certificate_rotation",
+                "category": "crypto_lifecycle",
+                "severity": "WARNING",
+                "serviceIdentity": (
+                    cert_meta["uri_sans"][0] if cert_meta and cert_meta["uri_sans"]
+                    else (cert_meta["common_name"] if cert_meta else "unknown"),
+                )[0],
+                "rotationType": "emergency_revocation",
+                "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
+                "serialNumber": normalized_serial,
+                "status": "REVOKED",
+                "vaultBackend": "LIVE_VAULT_HTTP_API",
+                "isLiveVault": True,
+                "isGenuine": True,
+                "provenance": "live_vault_pki",
+                "details": f"Vault confirmed revocation for serial {normalized_serial}; CRL fetched and parsed",
+            }
+            self.events.append(event)
+            self._record_telemetry(event)
+            return True
+
+        # Emulation mode can revoke only certificates issued by this local engine.
+        if cert_meta is None:
+            return False
         cert_meta["status"] = "REVOKED"
         self.revoked_serials.add(cert_meta["serial_int"])
-
-        # 1. Attempt Live Vault API Revocation
-        if self.engine_mode == "LIVE_VAULT_HTTP_API":
-            try:
-                self.api_client.revoke_certificate(serial_hex, "pki_mesh")
-            except Exception:
-                pass
-
-        # 2. Update CRL
         self._generate_crl()
 
-        now = dt.datetime.now(dt.timezone.utc)
         event = {
-            "timestamp": now.isoformat(),
+            "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
             "eventType": "key_certificate_rotation",
             "category": "crypto_lifecycle",
             "severity": "WARNING",
@@ -590,13 +622,13 @@ class VaultPKIEngine:
             "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
             "validFrom": cert_meta["valid_from"],
             "validUntil": cert_meta["valid_until"],
-            "serialNumber": serial_hex,
+            "serialNumber": normalized_serial,
             "status": "REVOKED",
-            "vaultBackend": self.engine_mode,
-            "isLiveVault": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
-            "isGenuine": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
-            "provenance": ("live_vault_pki" if self.engine_mode == "LIVE_VAULT_HTTP_API" else "standalone_cryptographic_emulation"),
-            "details": f"Revoked serial {serial_hex} due to {reason} (backend={self.engine_mode})",
+            "vaultBackend": "STANDALONE_CRYPTOGRAPHIC_EMULATION",
+            "isLiveVault": False,
+            "isGenuine": False,
+            "provenance": "standalone_cryptographic_emulation",
+            "details": f"Emulated revocation for serial {normalized_serial} due to {reason}",
         }
         self.events.append(event)
         self._record_telemetry(event)
