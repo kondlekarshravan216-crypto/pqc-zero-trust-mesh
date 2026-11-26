@@ -5,11 +5,11 @@ Post-Quantum Zero-Trust Microsegmentation Mesh (pqc-zero-trust-mesh)
 Member 5: Manideep (OPA, Vault & Dashboard)
 
 Serves the visual security observability dashboard and handles:
-- GET  /api/events: streams verified OPA authorization and Vault PKI certificate events
-- GET  /api/status: component health, genuine vs simulated event distribution, engine modes
-- POST /api/evaluate-opa: executes genuine OPA policy evaluations against authz.rego
-- POST /api/vault/issue: issues/renews workload certificates via Vault PKI Engine
-- POST /api/vault/revoke: executes emergency revocation and CRL update via Vault PKI Engine
+- GET  /api/events: streams stored telemetry records with their recorded provenance
+- GET  /api/status: dashboard status, OPA CLI presence, provenance counts, and Vault engine mode
+- POST /api/evaluate-opa: evaluates authz.rego via local OPA CLI or labelled Python fallback (not Envoy ext_authz)
+- POST /api/vault/issue: issues/renews certificates via the selected live Vault or emulation engine
+- POST /api/vault/revoke: revokes an explicitly supplied serial via the selected engine
 - POST /api/simulate: records simulated/synthetic events
 - POST /api/run-tests: executes automated test suites on-demand
 - Static files: index.html, css/index.css, js/app.js
@@ -44,7 +44,7 @@ DEFAULT_PORT = 8050
 
 
 # ==============================================================================
-# Helper: Genuine OPA Evaluator
+# Helper: Local OPA CLI / Python Policy Evaluator
 # ==============================================================================
 def evaluate_opa_policy(caller_identity: str, destination: str, action: str, path: str = "") -> Dict[str, Any]:
     """
@@ -313,7 +313,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_json_response({"error": "Vault coordinator uninitialized"}, status=503)
 
     def handle_evaluate_opa(self, body_bytes):
-        """Executes a genuine real-time OPA evaluation and emits a genuine audit event."""
+        """Runs a local policy evaluation and labels the backend; this is not Envoy ext_authz."""
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             caller = req.get("caller_identity", "spiffe://pqzt.local/ns/demo/sa/frontend")
@@ -365,7 +365,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_error(400, f"OPA Evaluation failed: {str(e)}")
 
     def handle_vault_issue(self, body_bytes):
-        """Invokes Vault PKI engine to issue a genuine workload certificate."""
+        """Issues a workload certificate through the configured live/emulated engine."""
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             common_name = req.get("common_name", "frontend")
@@ -392,7 +392,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_error(500, f"Vault issuance error: {str(e)}")
 
     def handle_vault_revoke(self, body_bytes):
-        """Invokes Vault PKI engine to execute emergency revocation."""
+        """Revokes an explicitly identified certificate through the configured engine."""
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             serial = req.get("serial")
