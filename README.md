@@ -168,6 +168,7 @@ The stored telemetry contains historic records and simulated events. Event count
 | Resource | Description |
 |---|---|
 | [Final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md) | Current submission summary, dashboard evidence and limitations |
+| [Repository technical audit](docs/PROJECT_AUDIT_2026-11-26.md) | Mentor-style findings, evidence boundaries and prioritized engineering work |
 | [Architecture v1](docs/architecture/architecture-v1.md) | High-level architecture and intended request flow |
 | [OPA integration contract](docs/architecture/opa-integration-contract.md) | Authorization contract |
 | [Integration notes](docs/INTEGRATION.md) | Cross-component status and evidence boundaries |
