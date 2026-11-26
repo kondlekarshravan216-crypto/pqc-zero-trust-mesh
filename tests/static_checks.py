@@ -45,8 +45,8 @@ used_f = {fts["common_tls_context"]["tls_certificates"][0]["certificate_chain"][
 r(used_b <= set(bm), "every cert/key path in backend-envoy.yaml is mounted by compose", str(sorted(used_b - set(bm))))
 r(used_f <= set(fm), "every cert/key path in frontend-envoy.yaml is mounted by compose", str(sorted(used_f - set(fm))))
 r(all(bm[p][1] == "ro" for p in used_b if p in bm) and all(fm[p][1] == "ro" for p in used_f if p in fm), "all certificate/key mounts are read-only")
-r(any("backend.key" in bm[p][0] for p in bm) and not any("frontend." in bm[p][0] for p in bm), "backend container mounts only backend credentials")
-r(any("frontend.key" in fm[p][0] for p in fm) and not any("backend." in fm[p][0] for p in fm), "frontend container mounts only frontend credentials")
+r(any("backend-envoy.key" in bm[p][0] for p in bm) and not any("frontend" in bm[p][0] for p in bm), "backend container mounts only backend credentials")
+r(any("frontend-envoy.key" in fm[p][0] for p in fm) and not any("backend" in fm[p][0] for p in fm), "frontend container mounts only frontend credentials")
 allsrc = " ".join(v.rsplit(":", 2)[0] for s in svc.values() for v in s.get("volumes", []))
 r("ca.key" not in allsrc and "/ca/" not in allsrc, "CA private key is not mounted into any container")
 for s in ("backend-envoy", "frontend-envoy"):
