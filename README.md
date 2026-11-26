@@ -78,49 +78,92 @@ Kubernetes NetworkPolicies are intended to provide network-level segmentation ar
 
 ## Quick start: local dashboard
 
-Tested locally on Kali Linux on 26 November 2026.
-
-Requirements: Python 3 and the dependencies needed by `dashboard/server.py` / `vault/scripts/vault_pki_coordinator.py`.
+Requirements: Python 3.
 
 ```bash
 git clone https://github.com/kondlekarshravan216-crypto/pqc-zero-trust-mesh.git
 cd pqc-zero-trust-mesh
 
-# Optional: create an isolated Python environment
 python3 -m venv .venv
 source .venv/bin/activate
+python3 -m pip install -r requirements.txt
 
-# Install runtime libraries used by the dashboard and Vault coordinator
-python3 -m pip install cryptography requests
-
-# Start the dashboard
+# Start the local dashboard
 bash dashboard/run_dashboard.sh
 ```
 
 Open: **http://127.0.0.1:8050**
 
-In a second terminal, inspect the read-only status endpoint:
+In a second terminal, inspect read-only endpoints:
 
 ```bash
 curl -sS http://127.0.0.1:8050/api/status
 curl -sS http://127.0.0.1:8050/api/events
 ```
 
-The dashboard can use the installed OPA CLI for `/api/evaluate-opa`; if that subprocess path is unavailable, the server has a Python fallback evaluator. Check the returned `evaluator` field before describing a result as an OPA CLI evaluation.
+The dashboard's `/api/evaluate-opa` endpoint runs the local OPA CLI when available and otherwise uses a Python policy fallback. Inspect the response `evaluator` field. Neither local evaluator mode is, by itself, a test of Envoy's gRPC `ext_authz` network path.
 
-## Full-stack prerequisites
+## Full-stack Compose setup
 
-The Compose file defines backend application, frontend/backend Envoy, and OPA services. It expects certificate files in a directory configured through `CERT_DIR` in a local, untracked `.env` file. A sample environment file is provided as `.env.example`.
+The Compose file expects these filenames in `CERT_DIR`:
 
-Before attempting the full stack:
+- `frontend.crt` and `frontend-envoy.key`
+- `backend.crt` and `backend-envoy.key`
+- `ca.crt`
 
-1. Install Docker Engine and the Compose plugin.
-2. Generate or obtain the expected test certificates and confirm filenames match the Compose mounts.
-3. Set `CERT_DIR` to the absolute certificate directory in your local `.env`.
-4. Validate the configuration with `docker compose config`.
-5. Start services only after reviewing the local certificate and Vault configuration.
+The hardened local PKI scripts create certificates in nested directories, so use the export helper to prepare the flat Compose bundle.
 
-Do not commit private keys, real tokens, Vault unseal material or populated `.env` files. The repository's local development Vault configuration is not a production deployment profile.
+Requirements: Docker Engine, Docker Compose plugin, OpenSSL, OPA CLI (for policy checks), and the Python dependencies above.
+
+```bash
+# From the repository root
+bash scripts/gen-ca.sh
+bash scripts/issue-cert.sh frontend
+bash scripts/issue-cert.sh backend
+bash scripts/prepare-compose-certs.sh
+```
+
+The helper prints the exact `CERT_DIR`, `LOCAL_UID`, and `LOCAL_GID` values. Create `.env` only if it does not already exist; if it exists, edit it carefully rather than overwriting local settings.
+
+Example for a fresh checkout:
+
+```bash
+if [ ! -f .env ]; then
+  cat > .env <<EOF
+CERT_DIR=$PWD/pki/out/compose-certs
+LOCAL_UID=$(id -u)
+LOCAL_GID=$(id -g)
+EOF
+else
+  echo ".env already exists; review CERT_DIR, LOCAL_UID and LOCAL_GID manually."
+fi
+
+docker compose config
+docker compose up -d
+docker compose ps
+```
+
+The `.env`, `pki/out/`, CA private key and leaf private keys must remain untracked. The local development Vault configuration is not a production deployment profile.
+
+## Focused test commands
+
+Run the checks that match the component you changed:
+
+```bash
+# Rego unit tests (requires OPA CLI)
+opa test opa/policies/ -v
+
+# OPA contract tests (requires OPA CLI)
+bash tests/test_opa.sh
+
+# Dashboard API safety regressions
+python3 tests/test_dashboard_api_security.py
+
+# Hybrid key-establishment unit tests
+pytest -q tests/pqc/test_hybrid_kem.py
+```
+
+The service-path and Vault suites should be run only after their documented local services/prerequisites are available. Their dated report files are historical results, not a substitute for a fresh run.
 
 ## Implementation status and evidence
 
