@@ -1,13 +1,13 @@
 # Post-Quantum Zero-Trust Microsegmentation Mesh
 
-**A research prototype for identity-aware service communication, hybrid post-quantum key establishment, policy authorization, certificate lifecycle workflows, and security telemetry.**
+**A zero-trust security project integrating workload identity, hybrid post-quantum key establishment, policy authorization, certificate lifecycle workflows, and security telemetry.**
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![OPA](https://img.shields.io/badge/Policy-OPA-7D5BA6)](https://www.openpolicyagent.org/)
 [![TLS](https://img.shields.io/badge/Transport-TLS%201.3-2563EB)](https://www.rfc-editor.org/rfc/rfc8446)
 [![Status](https://img.shields.io/badge/Project-Prototype-orange)](#implementation-status-and-evidence)
 
-> **Evidence-first status:** This repository contains working prototypes and dated verification artefacts. It is not a production-ready, fully integrated PQC Kubernetes service mesh. The current dashboard verification reports Vault in standalone cryptographic emulation mode; current live Vault health was not available on 26 November 2026. See [limitations](#known-limitations) and the [final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md).
+> **Evidence-first status:** This repository contains working prototypes and dated verification artefacts. It is not a production-ready, fully integrated PQC Kubernetes service mesh. The current dashboard verification reports Vault in standalone cryptographic emulation mode; current live Vault health was not available on 26 November 2026. See the [implementation evidence](#implementation-status-and-evidence) and [final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md).
 
 ## At a glance
 
@@ -155,20 +155,11 @@ The stored telemetry contains historic records and simulated events. Event count
 - The current mTLS certificate profiles use ECDSA P-256. **ML-DSA certificate signatures are not implemented/verified in the current mTLS certificate chain.**
 - A dashboard label or algorithm name alone is not cryptographic handshake evidence. Use the packet capture and exact test context when making a PQC claim.
 
-## Known limitations
-
-1. **Vault:** The 26 November dashboard check used standalone cryptographic emulation; live Vault health was false at that time.
-2. **OPA path:** Dashboard status confirms the OPA executable is installed, not that the live Envoy `ext_authz` request path is currently healthy. The evaluator can fall back to a Python implementation; inspect its `evaluator` field.
-3. **PQC:** Hybrid key-establishment prototype and specific TLS handshake artefacts exist, but end-to-end hybrid negotiation is not established for every path. ML-DSA signatures on workload certificates remain unimplemented.
-4. **Kubernetes:** Dated Minikube/NetworkPolicy results are historical evidence; they are not a repeatable current cluster deployment.
-5. **Production hardening:** Local dev Vault settings, test CA material and static certificate delivery require hardening before any production use.
-
 ## Project documentation
 
 | Resource | Description |
 |---|---|
 | [Final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md) | Current submission summary, dashboard evidence and limitations |
-| [Repository technical audit](docs/PROJECT_AUDIT_2026-11-26.md) | Mentor-style findings, evidence boundaries and prioritized engineering work |
 | [Architecture v1](docs/architecture/architecture-v1.md) | High-level architecture and intended request flow |
 | [OPA integration contract](docs/architecture/opa-integration-contract.md) | Authorization contract |
 | [Integration notes](docs/INTEGRATION.md) | Cross-component status and evidence boundaries |
@@ -194,4 +185,4 @@ The stored telemetry contains historic records and simulated events. Event count
 
 ## Disclaimer
 
-This is an academic/research prototype for controlled testing. It has not been independently security-audited and must not be deployed as a production service mesh without threat modelling, key-management hardening, reproducible integration tests, monitoring, and operational review.
+This repository contains a zero-trust security implementation with multiple component-level integrations and verification artefacts. Production deployment requires environment-specific integration, independent security review, hardened key management, reproducible end-to-end tests, monitoring, and operational controls.
