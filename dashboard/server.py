@@ -236,42 +236,43 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         # isGenuine boolean. Older versions incorrectly tagged emulation and
         # in-process test-harness events as genuine and treated missing tags
         # as simulated.
-        live_vault_events = sum(
-            1 for e in records
-            if e.get("isLiveVault") is True
-            or e.get("vaultBackend") == "LIVE_VAULT_HTTP_API"
-            or e.get("provenance") == "live_vault_pki"
-        )
-        local_opa_cli_events = sum(
-            1 for e in records
-            if e.get("evaluator") == "opa_cli_v1"
-            or e.get("verificationMode") in {
-                "local_opa_cli_evaluation",
-                "live_opa_ext_authz"  # legacy label used for a local opa eval call
-            }
-        )
-        test_harness_events = sum(
-            1 for e in records
-            if e.get("provenance") in {
+        live_vault_events = 0
+        local_opa_cli_events = 0
+        test_harness_events = 0
+        emulation_events = 0
+        explicitly_simulated_events = 0
+        unclassified_events = 0
+
+        for event in records:
+            if (
+                event.get("isLiveVault") is True
+                or event.get("vaultBackend") == "LIVE_VAULT_HTTP_API"
+                or event.get("provenance") == "live_vault_pki"
+            ):
+                live_vault_events += 1
+            elif (
+                event.get("evaluator") == "opa_cli_v1"
+                or event.get("verificationMode") in {
+                    "local_opa_cli_evaluation",
+                    "live_opa_ext_authz"  # legacy label used for a local opa eval call
+                }
+            ):
+                local_opa_cli_events += 1
+            elif event.get("provenance") in {
                 "live_service_path_mtls",
                 "python_in_process_tls_test_harness"
-            }
-        )
-        emulation_events = sum(
-            1 for e in records
-            if e.get("vaultBackend") == "STANDALONE_CRYPTOGRAPHIC_EMULATION"
-            or e.get("provenance") == "standalone_cryptographic_emulation"
-        )
-        explicitly_simulated_events = sum(
-            1 for e in records
-            if e.get("isGenuine") is False
-            or e.get("source") == "manual_simulation"
-        )
-        classified_count = (
-            live_vault_events + local_opa_cli_events + test_harness_events
-            + emulation_events + explicitly_simulated_events
-        )
-        unclassified_events = max(0, len(records) - classified_count)
+            }:
+                test_harness_events += 1
+            elif (
+                event.get("vaultBackend") == "STANDALONE_CRYPTOGRAPHIC_EMULATION"
+                or event.get("provenance") == "standalone_cryptographic_emulation"
+            ):
+                emulation_events += 1
+            elif event.get("isGenuine") is False or event.get("source") == "manual_simulation":
+                explicitly_simulated_events += 1
+            else:
+                unclassified_events += 1
+
         legacy_marked_genuine = sum(1 for e in records if e.get("isGenuine") is True)
         legacy_missing_flag = sum(1 for e in records if "isGenuine" not in e)
 
