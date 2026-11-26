@@ -316,12 +316,28 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         """Runs a local policy evaluation and labels the backend; this is not Envoy ext_authz."""
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
-            caller = req.get("caller_identity", "spiffe://pqzt.local/ns/demo/sa/frontend")
-            dest = req.get("destination", "backend")
-            action = req.get("action", "GET")
-            path = req.get("path", "/api/v1/resource")
+            if not isinstance(req, dict):
+                self.send_error(400, "JSON body must be an object")
+                return
 
-            eval_res = evaluate_opa_policy(caller, dest, action, path)
+            caller = req.get("caller_identity")
+            dest = req.get("destination")
+            action = req.get("action")
+            path = req.get("path")
+
+            if (
+                not isinstance(caller, str) or not caller.strip() or len(caller) > 512
+                or not isinstance(dest, str) or dest not in {"backend", "database"}
+                or not isinstance(action, str) or not action.strip() or len(action) > 16
+                or not isinstance(path, str) or not path.startswith("/") or len(path) > 2048
+            ):
+                self.send_error(
+                    400,
+                    "caller_identity, destination (backend/database), action and absolute path are required"
+                )
+                return
+
+            eval_res = evaluate_opa_policy(caller.strip(), dest, action.strip(), path)
             allow = eval_res["allow"]
             reason = eval_res["reason"]
             evaluator = eval_res["evaluator"]
