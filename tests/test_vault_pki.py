@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """
-Automated Test Suite for HashiCorp Vault PKI Setup, Certificate Renewal & Rotation
+Automated Test Suite for the dual-mode Vault PKI coordinator and certificate lifecycle logic
 Post-Quantum Zero-Trust Microsegmentation Mesh (pqc-zero-trust-mesh)
-Member 5: Manideep (OPA, Vault & Dashboard)
+
+The coordinator can use live Vault HTTP API mode or standalone cryptographic emulation. The TLS handshake and context-reload tests use an in-process Python TLS server; they do NOT exercise a live Envoy process or Envoy SDS. Test output and telemetry must be interpreted alongside the reported engine mode.
 
 Tests:
-1. Vault PKI Engine Configuration & Mesh CA Generation
-2. Workload Role Setup (mesh-workload with SPIFFE URI SANs)
-3. Leaf Certificate Issuance for Frontend & Backend (clientAuth / serverAuth)
-4. Live mTLS Handshake with Vault PKI Certificates
-5. Automated Certificate Renewal (Version 2 with new keypair & serial)
-6. Zero-Downtime Dynamic Server TLS Context Rotation (Envoy SDS model)
-7. Client Re-handshake with Rotated Certificate Version 2
-8. Emergency Revocation & CRL Generation
-9. Revoked Certificate Handshake Enforcement & CRL Verification
-10. Vault PKI Least-Privilege Policy Verification (mesh-pki.hcl)
-11. Telemetry Audit Event Pipeline Verification
-12. Vault HTTP REST API Client Endpoint & Header Contract
-13. Dual-Mode Engine Architecture & Integration Audit Breakdown
-14. Cryptographic Trust Chain & SPIFFE SVID Verification
+1. Dual-mode PKI engine setup and local/emulated CA generation.
+2. Workload role and SPIFFE URI SAN handling.
+3. Leaf certificate issuance for frontend and backend identities.
+4. mTLS handshake against the Python TLS stand-in.
+5. Certificate renewal with a new keypair and serial.
+6. Python TLS server context replacement (SDS-like behavior only).
+7. Client re-handshake with the renewed certificate.
+8. Revocation bookkeeping and CRL generation.
+9. Revoked-certificate verification.
+10. Vault PKI least-privilege policy checks.
+11. Telemetry provenance and audit event emission.
+12. Vault HTTP REST API client endpoint/header contract checks.
+13. Live-versus-emulation mode handling.
+14. Certificate chain and SPIFFE SVID verification.
 """
 
 import sys
@@ -77,7 +78,7 @@ def record_result(category, name, expected, actual, passed, details=""):
 
 
 class DynamicTLSServer:
-    """Mock backend server supporting zero-downtime hot swap of TLS certificates (Envoy SDS)."""
+    """In-process TLS stand-in supporting TLS-context replacement; not Envoy SDS."""
     def __init__(self, ca_path: Path, cert_path: Path, key_path: Path):
         self.ca_path = ca_path
         self.cert_path = cert_path
