@@ -38,6 +38,7 @@ vault/.pki_store_v2/
 vault/data/
 tests/work/
 tests/.work-run.*/
+tests/.work-vault-pki-*/
 
 # System & OS
 .DS_Store
