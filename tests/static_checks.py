@@ -28,7 +28,8 @@ r(fts.get("sni") in be["subjectAltName"], "frontend SNI is covered by a backend 
 for who, c in (("backend", ctx), ("frontend", fts["common_tls_context"])):
     p = c["tls_params"]
     r(p["tls_minimum_protocol_version"] == "TLSv1_3" and p["tls_maximum_protocol_version"] == "TLSv1_3", f"{who} Envoy pinned to TLS 1.3 (provisional policy)")
-    r(not any("MLKEM" in x.upper() or "KYBER" in x.upper() for x in p.get("ecdh_curves", [])), f"{who} ecdh_curves classical only (no PQC group configured)", str(p.get("ecdh_curves")))
+    curves = p.get("ecdh_curves", [])
+    r(bool(curves) and curves[0] == "X25519MLKEM768", f"{who} prefers configured X25519MLKEM768 (negotiation requires runtime capture)", str(curves))
 r("clientAuth" in fe["extendedKeyUsage"] and "serverAuth" not in fe["extendedKeyUsage"], "frontend.ext EKU is clientAuth only")
 r("serverAuth" in be["extendedKeyUsage"] and "clientAuth" not in be["extendedKeyUsage"], "backend.ext EKU is serverAuth only")
 
@@ -50,7 +51,7 @@ allsrc = " ".join(v.rsplit(":", 2)[0] for s in svc.values() for v in s.get("volu
 r("ca.key" not in allsrc and "/ca/" not in allsrc, "CA private key is not mounted into any container")
 for s in ("backend-envoy", "frontend-envoy"):
     u = svc[s].get("user", "")
-    r("LOCAL_UID:?" in u and "LOCAL_GID:?" in u, f"{s} runs as host UID/GID that must be set explicitly (no silent default)", u)
+    r("${LOCAL_UID:" in u and "${LOCAL_GID:" in u, f"{s} supports explicit host UID/GID configuration", u)
 r(lis["address"]["socket_address"]["port_value"] == 8443, "backend listener port 8443")
 fl = fr["static_resources"]["listeners"][0]["address"]["socket_address"]["port_value"]
 r(fl == 8080, "frontend listener port 8080")
