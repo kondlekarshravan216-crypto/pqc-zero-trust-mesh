@@ -147,3 +147,11 @@ test_deny_backend_reverse_traversal if {
         "action": "GET",
     }
 }
+
+# Test case 15: Missing HTTP action must fail closed rather than default to GET
+test_deny_missing_action if {
+    not allow with input as {
+        "identity": "spiffe://pqzt.local/ns/demo/sa/frontend",
+        "destination": "backend",
+    }
+}
