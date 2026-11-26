@@ -1,0 +1,65 @@
+name: Security and Integration Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install project and test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+      - name: Install OPA CLI
+        run: |
+          curl -fsSL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -o /tmp/opa
+          sudo install -m 0755 /tmp/opa /usr/local/bin/opa
+          opa version
+
+      - name: Python syntax checks
+        run: python -m compileall -q dashboard vault/scripts tests pqc
+
+      - name: Shell syntax checks
+        run: |
+          bash -n scripts/*.sh tests/test_opa.sh dashboard/run_dashboard.sh
+
+      - name: OPA Rego unit tests
+        run: opa test opa/policies/ -v
+
+      - name: OPA contract tests
+        run: bash tests/test_opa.sh
+
+      - name: Static Envoy and Compose consistency checks
+        run: python tests/static_checks.py .
+
+      - name: Dashboard API security tests
+        run: python tests/test_dashboard_api_security.py
+
+      - name: Compose network isolation tests
+        run: python tests/test_compose_network_isolation.py
+
+      - name: PQC and Vault unit tests
+        run: pytest -q tests/pqc/test_hybrid_kem.py tests/test_vault_pki.py
+
+      - name: Validate Compose interpolation and topology
+        run: |
+          touch .env
+          printf 'CERT_DIR=%s\nLOCAL_UID=1000\nLOCAL_GID=1000\n' "$GITHUB_WORKSPACE/pki/out/compose-certs" >> .env
+          docker compose config --quiet
+
