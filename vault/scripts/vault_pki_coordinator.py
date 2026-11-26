@@ -247,6 +247,8 @@ class VaultPKIEngine:
         # Initialize Root CA and roles
         self._init_root_ca()
         self._configure_default_roles()
+        if self.engine_mode == "STANDALONE_CRYPTOGRAPHIC_EMULATION":
+            self._load_emulated_certificates()
 
     def _init_root_ca(self):
         """Initializes Root CA via live Vault API or cryptographic emulation."""
@@ -365,6 +367,62 @@ class VaultPKIEngine:
         self.ca_file.chmod(0o644)
         self.ca_serial = format(self.ca_cert.serial_number, "x")
         self._generate_crl()
+
+    def _load_emulated_certificates(self) -> None:
+        """Reload previously issued local test certificates and current CRL state."""
+        crl = x509.load_pem_x509_crl(self.crl_pem) if self.crl_pem else None
+        revoked = {item.serial_number for item in crl} if crl else set()
+        for cert_file in sorted(self.work_dir.glob("*-v*.crt")):
+            if cert_file.is_symlink() or not cert_file.is_file():
+                raise RuntimeError(f"Refusing symlink/non-file certificate entry: {cert_file.name}")
+            match = re.fullmatch(r"([a-z][a-z0-9-]{0,31})-v([1-9][0-9]*)\.crt", cert_file.name)
+            if not match:
+                continue
+            common_name, version_text = match.groups()
+            version = int(version_text)
+            key_file = self.work_dir / f"{common_name}-v{version}.key"
+            if key_file.is_symlink() or not key_file.is_file():
+                raise RuntimeError(f"Certificate {cert_file.name} has no safe matching private-key file")
+            cert = x509.load_pem_x509_certificate(cert_file.read_bytes())
+            private_key = serialization.load_pem_private_key(key_file.read_bytes(), password=None)
+            cert_public = cert.public_key().public_bytes(
+                serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            key_public = private_key.public_key().public_bytes(
+                serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            if cert_public != key_public:
+                raise RuntimeError(f"Certificate/private-key mismatch for {common_name} version {version}")
+            try:
+                san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+                uri_sans = san.get_values_for_type(x509.UniformResourceIdentifier)
+                dns_sans = san.get_values_for_type(x509.DNSName)
+            except x509.ExtensionNotFound:
+                uri_sans, dns_sans = [], []
+            cn_values = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+            if not cn_values:
+                raise RuntimeError(f"Certificate {cert_file.name} has no commonName")
+            serial_int = cert.serial_number
+            serial_hex = format(serial_int, "x")
+            is_revoked = serial_int in revoked
+            self.certificates[serial_hex] = {
+                "common_name": cn_values[0].value,
+                "version": version,
+                "serial": serial_hex,
+                "serial_int": serial_int,
+                "role": "mesh-workload",
+                "uri_sans": uri_sans,
+                "dns_sans": dns_sans,
+                "cert_file": str(cert_file),
+                "key_file": str(key_file),
+                "valid_from": cert.not_valid_before.replace(tzinfo=dt.timezone.utc).isoformat(),
+                "valid_until": cert.not_valid_after.replace(tzinfo=dt.timezone.utc).isoformat(),
+                "status": "REVOKED" if is_revoked else "ACTIVE",
+                "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
+                "backend": self.engine_mode,
+            }
+            if is_revoked:
+                self.revoked_serials.add(serial_int)
 
     def _configure_default_roles(self):
         """Registers the approved workload role locally without modifying Vault."""
