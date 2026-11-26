@@ -90,13 +90,27 @@ Their presence in the dashboard does not independently prove active post-quantum
 
 ## 7. Visual Evidence
 
-The following screenshots were captured on 26 November 2026:
+The following dashboard screenshots were captured on 26 November 2026. They are embedded below so they are visible directly in this report on GitHub.
 
-1. `docs/screenshots/01-dashboard-overview.png`
-2. `docs/screenshots/02-mesh-topology.png`
-3. `docs/screenshots/03-opa-authorization.png`
-4. `docs/screenshots/04-security-telemetry.png`
-5. `docs/screenshots/05-vault-pki.png`
+### 7.1 Dashboard Overview
+
+![Dashboard Overview](../docs/screenshots/01-dashboard-overview.png)
+
+### 7.2 Mesh Topology
+
+![Mesh Topology](../docs/screenshots/02-mesh-topology.png)
+
+### 7.3 OPA Authorization
+
+![OPA Authorization](../docs/screenshots/03-opa-authorization.png)
+
+### 7.4 Security Telemetry
+
+![Security Telemetry](../docs/screenshots/04-security-telemetry.png)
+
+### 7.5 Vault PKI
+
+![Vault PKI](../docs/screenshots/05-vault-pki.png)
 
 ## 8. Other Project Evidence
 
