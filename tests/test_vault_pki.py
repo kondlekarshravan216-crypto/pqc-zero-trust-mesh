@@ -494,5 +494,40 @@ def main():
         sys.exit(0)
 
 
+class RevocationSafetyUnitTests(unittest.TestCase):
+    def test_emulation_rejects_unknown_serial_and_revokes_issued_certificate(self):
+        import tempfile
+        from pathlib import Path
+        engine_dir = Path(tempfile.mkdtemp(prefix="pqzt-revoke-test-"))
+        try:
+            engine = VaultPKIEngine(work_dir=engine_dir, force_mode="simulation")
+            _, _, serial = engine.issue_certificate(
+                common_name="frontend",
+                uri_sans=["spiffe://pqzt.local/ns/demo/sa/frontend"],
+                is_server=False,
+            )
+            self.assertFalse(engine.revoke_certificate("deadbeef"))
+            self.assertTrue(engine.revoke_certificate(serial))
+            self.assertTrue(engine.is_revoked(serial))
+        finally:
+            import shutil
+            shutil.rmtree(engine_dir, ignore_errors=True)
+
+    def test_live_vault_revoke_failure_is_not_swallowed(self):
+        from unittest.mock import Mock
+        import tempfile
+        from pathlib import Path
+        engine = object.__new__(VaultPKIEngine)
+        engine.engine_mode = "LIVE_VAULT_HTTP_API"
+        engine.certificates = {}
+        engine.events = []
+        engine.api_client = Mock()
+        engine.api_client.revoke_certificate.side_effect = RuntimeError("Vault unavailable")
+        with tempfile.TemporaryDirectory(prefix="pqzt-live-revoke-test-") as temp_dir:
+            engine.work_dir = Path(temp_dir)
+            with self.assertRaises(RuntimeError):
+                engine.revoke_certificate("deadbeef")
+        engine.api_client.revoke_certificate.assert_called_once()
+
 if __name__ == "__main__":
     main()
