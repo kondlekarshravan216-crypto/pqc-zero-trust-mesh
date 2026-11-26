@@ -42,16 +42,11 @@ target_destination := input.destination if {
     input.attributes.request.http.path
 } else := ""
 
-# Extracted Action (supports direct action or Envoy HTTP method, defaults to GET if omitted)
+# Extracted Action: missing method/action stays empty and therefore fails closed.
 request_action := input.action if {
     input.action
 } else := input.attributes.request.http.method if {
     input.attributes.request.http.method
-} else := "GET" if {
-    # If action is omitted but identity and destination are provided
-    caller_identity != ""
-    target_destination != ""
-    not input.action
 } else := ""
 
 # Helper to check if caller identity belongs to any approved mesh service
