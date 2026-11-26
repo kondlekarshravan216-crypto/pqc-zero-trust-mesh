@@ -111,7 +111,7 @@ The Compose file expects these filenames in `CERT_DIR`:
 - `backend.crt` and `backend-envoy.key`
 - `ca.crt`
 
-The hardened local PKI scripts create certificates in nested directories, so use the export helper to prepare the flat Compose bundle.
+The hardened local PKI scripts create certificates in nested directories, so use the export helper to prepare the flat Compose bundle. These exported files are issued by the local ECDSA P-256 test CA; they are not automatically issued or rotated by Vault.
 
 Requirements: Docker Engine, Docker Compose plugin, OpenSSL, OPA CLI (for policy checks), and the Python dependencies above.
 
@@ -158,6 +158,9 @@ bash tests/test_opa.sh
 
 # Dashboard API safety regressions
 python3 tests/test_dashboard_api_security.py
+
+# Compose network isolation regression checks
+python3 tests/test_compose_network_isolation.py
 
 # Hybrid key-establishment unit tests
 pytest -q tests/pqc/test_hybrid_kem.py
