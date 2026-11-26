@@ -231,14 +231,19 @@ class VaultPKIEngine:
         self.events: List[dict] = []
 
         self.api_client = VaultAPIClient(vault_addr, vault_token)
+        if force_mode not in (None, "live", "simulation"):
+            raise ValueError("force_mode must be None, 'live', or 'simulation'")
+        self.require_live = (force_mode == "live")
+        self.live_init_error = None
 
         # Determine operating mode
-        if force_mode == "live":
+        if self.require_live:
             self.engine_mode = "LIVE_VAULT_HTTP_API"
         elif force_mode == "simulation":
             self.engine_mode = "STANDALONE_CRYPTOGRAPHIC_EMULATION"
         else:
-            # Auto-detect live Vault availability
+            # Auto-detect live Vault availability. The selected mode and any
+            # initialization failure are returned by get_integration_status().
             if self.api_client.check_health():
                 self.engine_mode = "LIVE_VAULT_HTTP_API"
             else:
@@ -283,7 +288,13 @@ class VaultPKIEngine:
                 crl_file.write_bytes(self.crl_pem)
                 return
             except Exception as e:
-                # Fall back to emulation if live call failed
+                self.live_init_error = str(e)
+                if getattr(self, "require_live", False):
+                    # An explicit live-mode request must never silently become
+                    # an emulated CA/PKI operation.
+                    raise RuntimeError(
+                        f"Explicit live Vault mode initialization failed: {e}"
+                    ) from e
                 self.engine_mode = "STANDALONE_CRYPTOGRAPHIC_EMULATION"
 
         # Emulation initialization. Keep the local CA stable across dashboard
@@ -773,6 +784,7 @@ class VaultPKIEngine:
             "engine_mode": self.engine_mode,
             "vault_addr": self.api_client.vault_addr,
             "live_vault_healthy": self.api_client.check_health(),
+            "live_init_error": self.live_init_error,
             "ca_serial": self.ca_serial,
             "issued_certificates_count": len(self.certificates),
             "revoked_serials_count": len(self.revoked_serials),
