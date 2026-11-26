@@ -47,19 +47,19 @@ Reference: `reports/opa-vault-dashboard-verification-20261105.md`
 
 ## 5. Dashboard Verification — 26 November 2026
 
-The local dashboard status endpoint returned:
+A local dashboard snapshot was collected on 26 November 2026, before the subsequent dashboard provenance/security fixes were committed.
 
-- Dashboard status: healthy
-- OPA CLI installed: true
-- Telemetry log available: true
-- Total events: 150
-- Genuine events: 97
-- Simulated events: 53
-- Genuine event rate: 64.7%
-- Vault engine mode: STANDALONE_CRYPTOGRAPHIC_EMULATION
+The original status response reported:
+- Dashboard endpoint: healthy
+- OPA CLI installed: true (installation check only)
+- Telemetry file: available
+- Stored events: 150
+- Vault engine mode: `STANDALONE_CRYPTOGRAPHIC_EMULATION`
 - Live Vault health: false
 
-### Telemetry event distribution
+The original endpoint also reported 97 events as “genuine” and 53 as “simulated”. That split used a legacy boolean flag and was not a reliable measure of live component activity: emulation, test-harness and unclassified legacy events were not separated. The updated dashboard code classifies live Vault API records, local OPA CLI evaluations, test-harness records, cryptographic emulation, explicit simulation and unclassified legacy records separately. Pull the latest `main` branch before relying on the updated status endpoint.
+
+### Event distribution in the local snapshot
 
 | Event type | Count |
 |---|---:|
@@ -69,7 +69,7 @@ The local dashboard status endpoint returned:
 | Failed authentication | 21 |
 | Total | 150 |
 
-### Event status distribution
+### Event status distribution in the local snapshot
 
 | Status | Count |
 |---|---:|
@@ -77,16 +77,14 @@ The local dashboard status endpoint returned:
 | REVOKED | 16 |
 | Missing status field | 72 |
 
-The telemetry contains stored historical records and simulated events. These counts do not represent newly generated live events.
+These are stored historical records, not a live attack rate or evidence of newly generated traffic. The event log in the local working copy may differ from the telemetry file committed to GitHub.
 
-## 6. Cryptographic Algorithms
+## 6. Cryptographic Scope
 
-The dashboard reports:
-
-- Hybrid ECDH-P256 + ML-KEM-768
-- ML-DSA-65
-
-Their presence in the dashboard does not independently prove active post-quantum negotiation on every live service connection.
+- The Python key-establishment prototype in `pqc/hybrid_kem.py` combines **X25519 + ML-KEM-768** and derives a session key using transcript-bound HKDF-SHA-256. Five focused unit tests are recorded in `hybrid-kem-test-results.txt`.
+- The Envoy TLS configurations advertise `X25519MLKEM768` before classical fallback groups. Dated runtime notes and packet captures contain evidence for specific test handshakes; they do not prove that every current connection negotiates the hybrid group.
+- The workload certificate profiles use **ECDSA P-256 / ECDSA-SHA256**. This is separate from TLS session key establishment.
+- **ML-DSA certificate signatures are not implemented** in the current workload certificate chain.
 
 ## 7. Visual Evidence
 
@@ -122,14 +120,16 @@ The following dashboard screenshots were captured on 26 November 2026. They are 
 - `reports/live-kubernetes-demo-20261030.txt`
 - `reports/evidence/mesh-topology-and-authz-flow.svg`
 
-## 9. Current Limitations
+## 9. Current Engineering Gaps
 
-1. Live Vault health was not confirmed during the final dashboard verification.
-2. The dashboard currently reports standalone cryptographic emulation mode.
-3. Telemetry includes historical and simulated records.
-4. The 61/61 test result belongs to the historical 5 November verification report.
-5. Dashboard health alone does not prove the complete live Envoy-to-OPA authorization path.
-6. Reported cryptographic algorithms do not independently prove active PQC negotiation on every connection.
+1. Live Vault health was false in the 26 November dashboard snapshot; the dashboard used standalone cryptographic emulation.
+2. The dashboard's local OPA CLI/Python evaluator is not proof of a live Envoy-to-OPA gRPC `ext_authz` request path.
+3. The Python hybrid key-establishment prototype is not yet an authenticated peer-to-peer protocol with identity binding and key confirmation.
+4. The workload certificate chain remains ECDSA P-256; ML-DSA certificate signatures are not implemented.
+5. Envoy file-mounted test certificates are separate from Vault PKI issuance; automated SDS certificate delivery/rotation is not currently implemented.
+6. Kubernetes NetworkPolicy manifests and a reproducible clean-clone cluster deployment are not present in the repository. Dated Minikube logs are historical evidence only.
+7. The 61/61 result belongs to the historical 5 November verification report; it is not a fresh test run for this submission.
+8. The dashboard status and telemetry snapshot must be regenerated after pulling the latest code, because provenance classification and API safety controls have since changed.
 
 ## 10. Conclusion
 
