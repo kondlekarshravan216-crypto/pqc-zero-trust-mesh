@@ -17,7 +17,7 @@ static_resources:
             tls_params:
               tls_minimum_protocol_version: TLSv1_3
               tls_maximum_protocol_version: TLSv1_3
-              # Classical groups only. PQC/hybrid group (e.g. X25519MLKEM768) NOT enabled/verified - see docs/PQC_INTEGRATION.md
+              # Advertises X25519MLKEM768 first, then classical fallbacks. Confirm the negotiated group from a capture of this exact Envoy-to-Envoy connection; configuration alone is not proof.
               ecdh_curves: [X25519MLKEM768, X25519, P-256]
             tls_certificates:
             - certificate_chain: { filename: /etc/pqzt/certs/backend.crt }
