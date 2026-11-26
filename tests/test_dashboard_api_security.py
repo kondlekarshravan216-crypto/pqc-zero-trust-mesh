@@ -82,6 +82,14 @@ class DashboardAPISecurityTests(unittest.TestCase):
         )
         self.assertEqual(status, 400)
 
+    def test_opa_evaluator_rejects_missing_identity_destination_action(self):
+        status = self.post(
+            "/api/evaluate-opa",
+            body=b"{}",
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(status, 400)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
