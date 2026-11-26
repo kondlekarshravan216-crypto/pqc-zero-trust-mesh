@@ -33,6 +33,9 @@ vault-creds.json
 *.srl
 pki/out/
 pki/out-clean/
+vault/.pki_store/
+vault/.pki_store_v2/
+vault/data/
 tests/work/
 tests/.work-run.*/
 
