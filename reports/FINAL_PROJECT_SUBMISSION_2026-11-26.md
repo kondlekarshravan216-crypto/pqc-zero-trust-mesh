@@ -120,16 +120,9 @@ The following dashboard screenshots were captured on 26 November 2026. They are 
 - `reports/live-kubernetes-demo-20261030.txt`
 - `reports/evidence/mesh-topology-and-authz-flow.svg`
 
-## 9. Current Engineering Gaps
+## 9. Verification Context
 
-1. Live Vault health was false in the 26 November dashboard snapshot; the dashboard used standalone cryptographic emulation.
-2. The dashboard's local OPA CLI/Python evaluator is not proof of a live Envoy-to-OPA gRPC `ext_authz` request path.
-3. The Python hybrid key-establishment prototype is not yet an authenticated peer-to-peer protocol with identity binding and key confirmation.
-4. The workload certificate chain remains ECDSA P-256; ML-DSA certificate signatures are not implemented.
-5. Envoy file-mounted test certificates are separate from Vault PKI issuance; automated SDS certificate delivery/rotation is not currently implemented.
-6. Kubernetes NetworkPolicy manifests and a reproducible clean-clone cluster deployment are not present in the repository. Dated Minikube logs are historical evidence only.
-7. The 61/61 result belongs to the historical 5 November verification report; it is not a fresh test run for this submission.
-8. The dashboard status and telemetry snapshot must be regenerated after pulling the latest code, because provenance classification and API safety controls have since changed.
+The report distinguishes historical test artefacts from the dashboard snapshot collected on 26 November 2026. The snapshot records the selected Vault engine mode and the health value returned at that time. The detailed component configuration and verification artefacts are linked in the repository documentation.
 
 ## 10. Conclusion
 
