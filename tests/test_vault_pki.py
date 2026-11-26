@@ -23,6 +23,7 @@ Tests:
 """
 
 import sys
+import unittest
 import os
 import json
 import time
@@ -494,13 +495,14 @@ def main():
         sys.exit(0)
 
 
-class RevocationSafetyUnitTests(unittest.TestCase):
+class TestRevocationSafetyUnitTests(unittest.TestCase):
     def test_emulation_rejects_unknown_serial_and_revokes_issued_certificate(self):
         import tempfile
         from pathlib import Path
         engine_dir = Path(tempfile.mkdtemp(prefix="pqzt-revoke-test-"))
         try:
             engine = VaultPKIEngine(work_dir=engine_dir, force_mode="simulation")
+            engine._record_telemetry = lambda event: None
             _, _, serial = engine.issue_certificate(
                 common_name="frontend",
                 uri_sans=["spiffe://pqzt.local/ns/demo/sa/frontend"],
