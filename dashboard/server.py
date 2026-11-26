@@ -232,23 +232,68 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             except Exception:
                 pass
 
-        genuine_count = sum(1 for e in records if e.get("isGenuine") is True)
-        simulated_count = len(records) - genuine_count
+        # Classify events from their recorded provenance, not the legacy
+        # isGenuine boolean. Older versions incorrectly tagged emulation and
+        # in-process test-harness events as genuine and treated missing tags
+        # as simulated.
+        live_vault_events = sum(
+            1 for e in records
+            if e.get("isLiveVault") is True
+            or e.get("vaultBackend") == "LIVE_VAULT_HTTP_API"
+            or e.get("provenance") == "live_vault_pki"
+        )
+        local_opa_cli_events = sum(
+            1 for e in records
+            if e.get("evaluator") == "opa_cli_v1"
+            or e.get("verificationMode") in {
+                "local_opa_cli_evaluation",
+                "live_opa_ext_authz"  # legacy label used for a local opa eval call
+            }
+        )
+        test_harness_events = sum(
+            1 for e in records
+            if e.get("provenance") in {
+                "live_service_path_mtls",
+                "python_in_process_tls_test_harness"
+            }
+        )
+        emulation_events = sum(
+            1 for e in records
+            if e.get("vaultBackend") == "STANDALONE_CRYPTOGRAPHIC_EMULATION"
+            or e.get("provenance") == "standalone_cryptographic_emulation"
+        )
+        explicitly_simulated_events = sum(
+            1 for e in records
+            if e.get("isGenuine") is False
+            or e.get("source") == "manual_simulation"
+        )
+        classified_count = (
+            live_vault_events + local_opa_cli_events + test_harness_events
+            + emulation_events + explicitly_simulated_events
+        )
+        unclassified_events = max(0, len(records) - classified_count)
+        legacy_marked_genuine = sum(1 for e in records if e.get("isGenuine") is True)
+        legacy_missing_flag = sum(1 for e in records if "isGenuine" not in e)
 
         vault_status = PKI_COORDINATOR.get_integration_status() if PKI_COORDINATOR else {}
 
         status = {
             "status": "healthy",
+            "dashboard_status": "healthy",
             "opa_installed": opa_installed,
+            "opa_request_path_health": "not_checked",
             "telemetry_log_exists": TELEMETRY_LOG.exists(),
             "total_events": len(records),
-            "genuine_events": genuine_count,
-            "simulated_events": simulated_count,
-            "genuine_rate_pct": round((genuine_count / len(records) * 100), 1) if records else 100.0,
+            "live_vault_events": live_vault_events,
+            "local_opa_cli_evaluations": local_opa_cli_events,
+            "test_harness_events": test_harness_events,
+            "emulation_events": emulation_events,
+            "explicitly_simulated_events": explicitly_simulated_events,
+            "unclassified_legacy_events": unclassified_events,
+            "legacy_events_marked_genuine": legacy_marked_genuine,
+            "legacy_events_missing_isGenuine": legacy_missing_flag,
             "vault_engine_mode": vault_status.get("engine_mode", "STANDALONE_CRYPTOGRAPHIC_EMULATION"),
             "live_vault_healthy": vault_status.get("live_vault_healthy", False),
-            "dashboard_status": "healthy",
-            "opa_request_path_health": "not_checked",
             "pqc_key_establishment": {
                 "prototype": ["X25519 + ML-KEM-768"],
                 "captured_tls_group": ["X25519MLKEM768"]
