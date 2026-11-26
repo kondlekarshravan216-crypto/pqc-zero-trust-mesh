@@ -1,0 +1,6 @@
+{
+  "identity": "spiffe://pqzt.local/ns/demo/sa/unapproved-service",
+  "destination": "backend",
+  "action": "GET",
+  "path": "/api/v1/status"
+}

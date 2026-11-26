@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZeroTrustMeshDashboardEvents",
+  "description": "Initial security events tracked by the PQC Zero-Trust Mesh Observability Dashboard",
+  "events": [
+    {
+      "eventType": "denied_request",
+      "category": "authorization",
+      "severity": "WARNING",
+      "description": "Triggered when an unauthorized identity or forbidden route access is blocked by OPA policy evaluation.",
+      "fields": {
+        "timestamp": "ISO8601 UTC timestamp",
+        "sourceIdentity": "SPIFFE ID or service name of caller",
+        "destinationService": "Target service endpoint",
+        "action": "HTTP method or RPC action",
+        "path": "Requested URL path or API route",
+        "policy": "Policy package evaluated (e.g. authz)",
+        "decision": "Decision returned (false)",
+        "reason": "Rejection explanation"
+      },
+      "sample": {
+        "timestamp": "2026-10-12T13:05:00Z",
+        "eventType": "denied_request",
+        "sourceIdentity": "spiffe://cluster.local/ns/mesh/sa/unapproved-service",
+        "destinationService": "backend",
+        "action": "POST",
+        "path": "/api/v1/admin/shutdown",
+        "policy": "authz",
+        "decision": false,
+        "reason": "Access denied: unapproved identity or unauthorized destination"
+      },
+      "alertThreshold": "> 5 events within 1 minute from the same source identity"
+    },
+    {
+      "eventType": "failed_authentication",
+      "category": "authentication",
+      "severity": "HIGH",
+      "description": "Triggered when mTLS handshake fails, cryptographic signature verification fails (ML-DSA / Dilithium / ECDSA), or an expired/invalid SPIFFE verifiable identity document (SVID) is presented.",
+      "fields": {
+        "timestamp": "ISO8601 UTC timestamp",
+        "clientIp": "Client source IP address",
+        "peerCertificateFingerprint": "SHA256 fingerprint if present",
+        "tlsCipherSuite": "Attempted cipher suite (e.g., Hybrid ECDH + ML-KEM-768)",
+        "failureReason": "Handshake error details (e.g., untrusted CA, invalid signature, expired cert)",
+        "targetService": "Target service accepting connection"
+      },
+      "sample": {
+        "timestamp": "2026-10-12T13:06:12Z",
+        "eventType": "failed_authentication",
+        "clientIp": "10.244.1.45",
+        "peerCertificateFingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tlsCipherSuite": "TLS_AES_256_GCM_SHA384_MLKEM768",
+        "failureReason": "mTLS verification failed: client certificate signed by untrusted authority",
+        "targetService": "backend-service"
+      },
+      "alertThreshold": "> 3 failed authentications within 5 minutes"
+    },
+    {
+      "eventType": "suspicious_command",
+      "category": "runtime_security",
+      "severity": "CRITICAL",
+      "description": "Triggered when unexpected shell execution, container breakout attempt, privilege escalation, or unauthorized administrative command is executed within mesh workload pods.",
+      "fields": {
+        "timestamp": "ISO8601 UTC timestamp",
+        "podName": "Kubernetes pod name where command executed",
+        "namespace": "Kubernetes namespace",
+        "container": "Container name",
+        "commandLine": "Executed command and arguments",
+        "user": "Operating system user UID/GID",
+        "parentProcess": "Parent process binary name"
+      },
+      "sample": {
+        "timestamp": "2026-10-12T13:07:30Z",
+        "eventType": "suspicious_command",
+        "podName": "frontend-service-7f8d9b6c4-2x9la",
+        "namespace": "mesh",
+        "container": "frontend",
+        "commandLine": "curl -s http://169.254.169.254/latest/meta-data/",
+        "user": "uid=0(root) gid=0(root)",
+        "parentProcess": "sh"
+      },
+      "alertThreshold": "Immediate alert on any critical command execution"
+    },
+    {
+      "eventType": "key_certificate_rotation",
+      "category": "crypto_lifecycle",
+      "severity": "INFO",
+      "description": "Triggered when Post-Quantum (ML-KEM/ML-DSA) or classic certificates, SPIFFE SVIDs, or mesh mutual TLS credentials are scheduled, rotated, or renewed.",
+      "fields": {
+        "timestamp": "ISO8601 UTC timestamp",
+        "serviceIdentity": "SPIFFE ID of the rotated service",
+        "rotationType": "Scheduled rotation, automated renewal, or emergency revocation",
+        "algorithm": "Cryptographic algorithm (e.g. ML-KEM-768 + X25519, ML-DSA-65)",
+        "validFrom": "Validity start time",
+        "validUntil": "Validity expiration time",
+        "serialNumber": "New certificate serial number",
+        "status": "Success or Failure"
+      },
+      "sample": {
+        "timestamp": "2026-10-12T12:00:00Z",
+        "eventType": "key_certificate_rotation",
+        "serviceIdentity": "spiffe://cluster.local/ns/mesh/sa/frontend-service",
+        "rotationType": "scheduled_rotation",
+        "algorithm": "Hybrid ECDH-P256 + ML-KEM-768",
+        "validFrom": "2026-10-12T12:00:00Z",
+        "validUntil": "2026-10-13T12:00:00Z",
+        "serialNumber": "4a7b9c1d2e3f0012a",
+        "status": "SUCCESS"
+      },
+      "alertThreshold": "Alert on rotation failure or certificates expiring within 1 hour"
+    }
+  ]
+}

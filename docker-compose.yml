@@ -24,6 +24,23 @@ services:
       - "127.0.0.1:18443:8443"
     depends_on:
       - backend-app
+      - opa-service
+    networks:
+      - mesh
+
+  opa-service:
+    image: openpolicyagent/opa:1.22.2-envoy
+    command:
+      - "run"
+      - "--server"
+      - "--addr=0.0.0.0:8181"
+      - "--set=plugins.envoy_ext_authz_grpc.addr=:9191"
+      - "--set=plugins.envoy_ext_authz_grpc.path=authz/allow"
+      - "/policies"
+    volumes:
+      - "./opa/policies:/policies:ro"
+    ports:
+      - "127.0.0.1:8181:8181"
     networks:
       - mesh
 

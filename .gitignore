@@ -9,19 +9,46 @@ htmlcov/
 .venv/
 venv/
 
-# Environment variables and local secrets
+# Environment & Secrets
 .env
 .env.*
 !.env.example
+*.token
+*secret*
+*credential*
+vault-token
+vault-creds.json
 
-# Private key material and generated PKI output
+# Whitelist markdown documentation
+!docs/*.md
+
+# Private key material and generated PKI output must never be committed
 *.key
 *.pem
-*.srl
+*.crt
 *.csr
 *.p12
 *.pfx
+*.jks
+*.srl
 pki/out/
 pki/out-clean/
 tests/work/
 tests/.work-run.*/
+
+# System & OS
+.DS_Store
+Thumbs.db
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporary & Logs
+*.log
+tmp/
+scratch/
+tools/
+*.exe

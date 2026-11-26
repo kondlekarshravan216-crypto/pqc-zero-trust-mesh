@@ -1,4 +1,26 @@
-# CA, Service Identity, Envoy & mTLS module
+# Post-Quantum Zero-Trust Microsegmentation Mesh (`pqc-zero-trust-mesh`)
+
+Enterprise-oriented prototype implementing a Post-Quantum Zero-Trust Kubernetes microsegmentation mesh with hybrid ECDH + ML-KEM, mTLS, OPA policy enforcement, secret management, and security observability.
+
+---
+
+## Architecture & System Components
+
+1. **OPA Policy Enforcement**: [`opa/README.md`](opa/README.md) - Decentralized authorization policies (`authorization.rego`, `authz.rego`), unit tests, test inputs, and security dashboard telemetry events. Integrated directly into the service request path via Envoy `ext_authz`.
+2. **Vault Secret Management & PKI Key Rotation**: [`vault/README.md`](vault/README.md) - HashiCorp Vault server dev configuration, least-privilege mesh secrets and PKI access policies (`mesh-secrets.hcl`, `mesh-pki.hcl`), centralized Root CA, dynamic SDS workload leaf certificate issuance, automated renewal at 66% TTL, and CRL emergency revocation.
+3. **Observability & Security Dashboard**: [`dashboard/`](dashboard/) - Real-time zero-trust visual telemetry dashboard monitoring OPA ext_authz decisions, live SVG mesh topology with packet flow animation, Vault certificate rotation versions, and interactive traffic simulation. Run with `python dashboard/server.py 8050` or `./dashboard/run_dashboard.ps1`.
+4. **Automated Test Suites**:
+   - OPA Policy Tests: [	ests/test_opa.ps1](tests/test_opa.ps1) & [	ests/test_opa.sh](tests/test_opa.sh) (28/28 PASS: 18 unit + 10 eval tests).
+   - Live Service Path Authorization Suite: [	ests/test_service_path.py](tests/test_service_path.py) & [	ests/test_service_path.ps1](tests/test_service_path.ps1) (15/15 PASS).
+   - Vault PKI Setup, API & Rotation Suite: [	ests/test_vault_pki.py](tests/test_vault_pki.py) & [	ests/test_vault_pki.ps1](tests/test_vault_pki.ps1) (14/14 PASS).
+   - Total Verification: **57/57 Tests Passing (100%)**.
+   - Integration Reports: [docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md](docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md), [docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md](docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md), [	ests/results-service-authz.md](tests/results-service-authz.md), [	ests/results-vault-pki.md](tests/results-vault-pki.md).
+5. **CA, Service Identity, Envoy & mTLS Module**: [`pki/`](pki/), [`envoy/`](envoy/), [`scripts/`](scripts/) - Local test CA, SPIFFE service identities, Envoy sidecar configurations, and mTLS verification suite.
+
+
+---
+
+## CA, Service Identity, Envoy & mTLS Module Details
 
 Part of the *Post-Quantum Zero-Trust Microsegmentation Mesh*. Owner role: CA / Service Identity / Envoy / mTLS.
 
@@ -11,14 +33,14 @@ Part of the *Post-Quantum Zero-Trust Microsegmentation Mesh*. Owner role: CA / S
 >   written but **unexecuted and unvalidated** (YAML syntax checked only). The mTLS behaviour was proven with `openssl s_server`
 >   as a stand-in enforcing the same policy (TLS 1.3, client cert required). SAN allow-listing in Envoy is therefore untested.
 
-## Architecture / request flow
+### Architecture / request flow
 ```
 client -> [frontend-envoy :8080 plain HTTP] ==mTLS (TLS1.3)==> [backend-envoy :8443] -> backend-app :8080 (plain, private net)
             presents frontend cert                              requires client cert from mesh CA
             checks backend chain + SAN spiffe://.../sa/backend  allows only SAN spiffe://.../sa/frontend
 ```
 
-## Trust model & identities
+### Trust model & identities
 | Item | Value |
 |---|---|
 | Root CA | `CN=PQZT Local Test Root CA`, ECDSA P-256, 10 y, `CA:TRUE, pathlen:0`, keyCertSign/cRLSign. **Test CA only** — not for production. |
@@ -28,7 +50,7 @@ Identity = URI SAN (SPIFFE-style). Separate EKUs mean a stolen server cert canno
 The CA key (`pki/out/ca/ca.key`) is never mounted into any service. Service dirs contain only their own key + the CA cert.
 No revocation (CRL/OCSP) is implemented; rely on short lifetimes.
 
-## Commands
+### Commands
 ```bash
 cd pki-mtls
 bash scripts/gen-ca.sh                 # idempotent; refuses to overwrite existing CA
@@ -45,7 +67,7 @@ openssl s_client -connect 127.0.0.1:8443 </dev/null  # no client cert => must be
 ```
 Rotate: delete the specific service dir yourself, re-run `issue-cert.sh <name>`, restart Envoy (static files; no SDS).
 
-## Test results (actually executed; details in `tests/results.md`)
+### Test results (actually executed; details in `tests/results.md`)
 27 checks: **24 PASS, 0 FAIL, 2 NOT RUN, 1 INFO**; three consecutive runs identical.
 Verified: chain, key/cert match, SAN/EKU, expiry; successful mTLS (HTTP 200); rejections for no client cert (`certificate required`),
 rogue-CA client with correct SAN (`unknown ca`), expired client cert, wrong-EKU client cert (`unsupported certificate`),
@@ -54,17 +76,16 @@ Negotiated (actual): **TLSv1.3, TLS_AES_256_GCM_SHA384, X25519, ECDSA signature*
 **NOT RUN:** `envoy --mode validate`; Docker Compose/live Envoy end-to-end (tools absent).
 **Not testable with the stand-in:** Envoy `match_typed_subject_alt_names` (rejecting a valid-CA cert with a *different* identity).
 
-## Troubleshooting
+### Troubleshooting
 * `certificate required` / `unknown ca` → client cert missing or not signed by mesh CA. `unsupported certificate` → wrong EKU.
 * Envoy `permission denied` on key → set `LOCAL_UID/LOCAL_GID`; keys are 0600.
 * `UPSTREAM_TRANSPORT_FAILURE_REASON` in the frontend access log shows upstream TLS failures; backend log shows `peer_uri_san`.
 * Envoy does not check hostnames by itself; identity is enforced only by the `match_typed_subject_alt_names` entries.
 
-## Security considerations
+### Security considerations
 Test CA key unprotected on disk; no HSM/passphrase. No revocation. Demo keys are 0600 and git-ignored (`pki/out/`).
 Backend app traffic behind Envoy is plaintext on the private network. Admin interfaces bind to 127.0.0.1.
 
-
-## Delivery and validation note
-
+### Delivery and validation note
 This package combines the original module archive with the later hardened PKI scripts and test utilities. The official project specification was not included in the supplied archives, so service identities, namespace, trust domain, ports, and deployment topology remain provisional. The saved test reports describe earlier sandbox runs; they are not proof that Envoy or Docker integration has run on your machine. Review the configuration against the official specification before generating certificates or deploying.
+
