@@ -108,10 +108,12 @@ async function loadTelemetryData(showNotice = false) {
 }
 
 async function loadComponentStatus() {
-  const setPill = (id, message) => {
+  const setPill = (id, message, state = 'cyan') => {
     const pill = document.getElementById(id);
     const label = pill?.querySelector('.pill-label');
+    const dot = pill?.querySelector('.pulse-dot');
     if (label) label.textContent = message;
+    if (dot) dot.className = `pulse-dot ${state}`;
   };
 
   try {
@@ -123,22 +125,25 @@ async function loadComponentStatus() {
       'mesh-health-pill',
       status.opa_installed
         ? 'OPA CLI: installed (Envoy request path not checked)'
-        : 'OPA CLI: not installed'
+        : 'OPA CLI: not installed',
+      status.opa_installed ? 'amber' : 'red'
     );
     setPill(
       'vault-pki-pill',
       status.vault_engine_mode === 'LIVE_VAULT_HTTP_API' && status.live_vault_healthy
         ? 'Vault: live API reachable'
-        : 'Vault: standalone emulation / live API unavailable'
+        : 'Vault: standalone emulation / live API unavailable',
+      status.vault_engine_mode === 'LIVE_VAULT_HTTP_API' && status.live_vault_healthy ? 'green' : 'amber'
     );
     setPill(
       'telemetry-provenance-pill',
-      `Stored: ${status.total_events || 0}; live Vault: ${status.live_vault_events || 0}; local OPA CLI: ${status.local_opa_cli_evaluations || 0}; unclassified: ${status.unclassified_legacy_events || 0}`
+      `Stored: ${status.total_events || 0}; live Vault: ${status.live_vault_events || 0}; local OPA CLI: ${status.local_opa_cli_evaluations || 0}; unclassified: ${status.unclassified_legacy_events || 0}`,
+      'cyan'
     );
   } catch (error) {
-    setPill('mesh-health-pill', 'OPA status: unavailable');
-    setPill('vault-pki-pill', 'Vault status: unavailable');
-    setPill('telemetry-provenance-pill', 'Telemetry status: unavailable');
+    setPill('mesh-health-pill', 'OPA status: unavailable', 'red');
+    setPill('vault-pki-pill', 'Vault status: unavailable', 'red');
+    setPill('telemetry-provenance-pill', 'Telemetry status: unavailable', 'red');
   }
 }
 
