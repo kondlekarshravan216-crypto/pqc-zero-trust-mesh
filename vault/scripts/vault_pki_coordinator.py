@@ -221,7 +221,7 @@ class VaultPKIEngine:
         vault_token: Optional[str] = None,
         force_mode: Optional[str] = None,
     ):
-        self.work_dir = work_dir or (ROOT_DIR / "vault" / ".pki_store")
+        self.work_dir = work_dir or (ROOT_DIR / "vault" / ".pki_store_v2")
         self.work_dir.mkdir(parents=True, exist_ok=True)
         self.work_dir.chmod(0o700)
         self.roles = {}
@@ -284,7 +284,44 @@ class VaultPKIEngine:
                 # Fall back to emulation if live call failed
                 self.engine_mode = "STANDALONE_CRYPTOGRAPHIC_EMULATION"
 
-        # Emulation initialization
+        # Emulation initialization. Keep the local CA stable across dashboard
+        # restarts so previously issued emulated leaf certificates remain verifiable.
+        ca_key_file = self.work_dir / "emulation-ca.key"
+        ca_cert_file = self.work_dir / "ca.crt"
+        if ca_key_file.exists() or ca_key_file.is_symlink() or ca_cert_file.exists() or ca_cert_file.is_symlink():
+            if (
+                not ca_key_file.is_file() or ca_key_file.is_symlink()
+                or not ca_cert_file.is_file() or ca_cert_file.is_symlink()
+            ):
+                raise RuntimeError(
+                    "Incomplete emulation CA state. Refusing to replace or regenerate existing CA material; "
+                    "preserve the directory and inspect it before recovery."
+                )
+            try:
+                stored_key = serialization.load_pem_private_key(ca_key_file.read_bytes(), password=None)
+                stored_cert = x509.load_pem_x509_certificate(ca_cert_file.read_bytes())
+                key_public = stored_key.public_key().public_bytes(
+                    serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                cert_public = stored_cert.public_key().public_bytes(
+                    serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                constraints = stored_cert.extensions.get_extension_for_class(x509.BasicConstraints).value
+                if key_public != cert_public or stored_cert.subject != stored_cert.issuer or not constraints.ca:
+                    raise ValueError("stored CA key/certificate mismatch or invalid CA constraints")
+                self.ca_key = stored_key
+                self.ca_cert = stored_cert
+                self.ca_serial = format(stored_cert.serial_number, "x")
+                crl_file = self.work_dir / "crl.pem"
+                if crl_file.exists():
+                    self.crl_pem = crl_file.read_bytes()
+                    x509.load_pem_x509_crl(self.crl_pem)
+                else:
+                    self._generate_crl()
+                return
+            except Exception as exc:
+                raise RuntimeError(f"Existing emulation CA state failed validation; no files were overwritten: {exc}") from exc
+
         self.ca_key = ec.generate_private_key(ec.SECP256R1())
         ca_subject = x509.Name([
             x509.NameAttribute(NameOID.COMMON_NAME, "PQC Zero-Trust Mesh Root CA"),
@@ -316,7 +353,16 @@ class VaultPKIEngine:
             )
             .sign(self.ca_key, hashes.SHA256())
         )
+        ca_key_file.write_bytes(
+            self.ca_key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.PKCS8,
+                serialization.NoEncryption(),
+            )
+        )
+        ca_key_file.chmod(0o600)
         self.ca_file.write_bytes(self.ca_cert.public_bytes(serialization.Encoding.PEM))
+        self.ca_file.chmod(0o644)
         self.ca_serial = format(self.ca_cert.serial_number, "x")
         self._generate_crl()
 
