@@ -305,6 +305,11 @@ body.dark-theme::before {
   box-shadow: 0 0 8px var(--cyan-neon);
 }
 
+.pulse-dot.amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.65);
+}
+
 .pulse-dot.red {
   background-color: var(--rose-red);
   box-shadow: 0 0 8px var(--rose-red);
