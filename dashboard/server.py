@@ -434,6 +434,12 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_simulate(self, body_bytes):
         try:
             event = json.loads(body_bytes.decode("utf-8"))
+            if not isinstance(event, dict) or not event:
+                self.send_error(400, "Simulation payload must be a non-empty JSON object")
+                return
+            if len(event) > 40:
+                self.send_error(400, "Simulation payload has too many fields")
+                return
             # Never trust client-supplied provenance for simulated events.
             event["isGenuine"] = False
             event["source"] = "manual_simulation"
