@@ -38,10 +38,9 @@ TELEMETRY_LOG = ROOT_DIR / "opa" / "telemetry" / "audit_log.json"
 
 def record_telemetry_event(event: dict):
     try:
-        if "isGenuine" not in event:
-            event["isGenuine"] = True
-        if "provenance" not in event:
-            event["provenance"] = "live_service_path_mtls"
+        # This suite uses an in-process Python TLS stand-in, not Envoy.
+        event["isGenuine"] = False
+        event["provenance"] = "python_in_process_tls_test_harness"
         records = []
         if TELEMETRY_LOG.exists():
             try:
