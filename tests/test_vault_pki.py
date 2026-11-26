@@ -537,6 +537,20 @@ class TestRevocationSafetyUnitTests(unittest.TestCase):
             self.assertTrue(second.revoke_certificate(serial))
             self.assertTrue(second.is_revoked(serial))
 
+    def test_explicit_live_mode_never_falls_back_to_emulation(self):
+        from unittest.mock import Mock
+        import tempfile
+        from pathlib import Path
+        engine = object.__new__(VaultPKIEngine)
+        engine.engine_mode = "LIVE_VAULT_HTTP_API"
+        engine.require_live = True
+        engine.work_dir = Path(tempfile.mkdtemp(prefix="pqzt-force-live-test-"))
+        engine.api_client = Mock()
+        engine.api_client.mount_pki.side_effect = RuntimeError("Vault unavailable")
+        with self.assertRaisesRegex(RuntimeError, "Explicit live Vault mode initialization failed"):
+            engine._init_root_ca()
+        self.assertEqual(engine.engine_mode, "LIVE_VAULT_HTTP_API")
+
     def test_live_vault_revoke_failure_is_not_swallowed(self):
         from unittest.mock import Mock
         import tempfile
