@@ -7,6 +7,11 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PKI_OUT="${PKI_OUT:-$ROOT/pki/out}"
 CERT_DIR="${CERT_DIR:-$PKI_OUT/compose-certs}"
 
+[[ "$CERT_DIR" == /* ]] || {
+  echo "ERROR: CERT_DIR must be an absolute path (got: $CERT_DIR)" >&2
+  exit 1
+}
+
 required=(
   "$PKI_OUT/ca/ca.crt"
   "$PKI_OUT/frontend/frontend.crt"
@@ -31,11 +36,25 @@ fi
 mkdir -p "$CERT_DIR"
 chmod 700 "$CERT_DIR"
 
-install -m 644 "$PKI_OUT/ca/ca.crt" "$CERT_DIR/ca.crt"
-install -m 644 "$PKI_OUT/frontend/frontend.crt" "$CERT_DIR/frontend.crt"
-install -m 600 "$PKI_OUT/frontend/frontend.key" "$CERT_DIR/frontend-envoy.key"
-install -m 644 "$PKI_OUT/backend/backend.crt" "$CERT_DIR/backend.crt"
-install -m 600 "$PKI_OUT/backend/backend.key" "$CERT_DIR/backend-envoy.key"
+copy_once() {
+  local source="$1" destination="$2" mode="$3"
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    if [[ -f "$destination" && ! -L "$destination" ]] && cmp -s "$source" "$destination"; then
+      chmod "$mode" "$destination"
+      return 0
+    fi
+    echo "ERROR: refusing to replace existing file: $destination" >&2
+    echo "Choose a new CERT_DIR or inspect/remove the old export after backing it up." >&2
+    exit 1
+  fi
+  install -m "$mode" "$source" "$destination"
+}
+
+copy_once "$PKI_OUT/ca/ca.crt" "$CERT_DIR/ca.crt" 644
+copy_once "$PKI_OUT/frontend/frontend.crt" "$CERT_DIR/frontend.crt" 644
+copy_once "$PKI_OUT/frontend/frontend.key" "$CERT_DIR/frontend-envoy.key" 600
+copy_once "$PKI_OUT/backend/backend.crt" "$CERT_DIR/backend.crt" 644
+copy_once "$PKI_OUT/backend/backend.key" "$CERT_DIR/backend-envoy.key" 600
 
 echo
 echo "Compose certificate bundle prepared at: $CERT_DIR"
