@@ -593,7 +593,11 @@ class VaultPKIEngine:
             # Vault is authoritative in live mode. A serial may have been issued
             # before this process started, so do not require in-memory metadata.
             self.api_client.revoke_certificate(normalized_serial, "pki_mesh")
-            self._generate_crl()  # fetches and validates the actual Vault CRL; raises on failure
+            self._generate_crl()  # fetches and parses the actual Vault CRL; raises on failure
+            revoked_serial_int = int(normalized_serial, 16)
+            live_crl = x509.load_pem_x509_crl(self.crl_pem)
+            if not any(item.serial_number == revoked_serial_int for item in live_crl):
+                raise RuntimeError("Vault revoke returned but the fetched CRL does not contain the requested serial")
             if cert_meta:
                 cert_meta["status"] = "REVOKED"
             event = {
@@ -649,9 +653,14 @@ class VaultPKIEngine:
         return True
 
     def is_revoked(self, serial_hex: str) -> bool:
-        """Checks if a serial number is in the CRL."""
-        if serial_hex in self.certificates:
-            return self.certificates[serial_hex]["serial_int"] in self.revoked_serials
+        """Checks a serial against the active backend's revocation state."""
+        normalized = str(serial_hex).replace(":", "").replace("-", "").lower()
+        if self.engine_mode == "LIVE_VAULT_HTTP_API" and self.crl_pem:
+            serial_int = int(normalized, 16)
+            crl = x509.load_pem_x509_crl(self.crl_pem)
+            return any(item.serial_number == serial_int for item in crl)
+        if normalized in self.certificates:
+            return self.certificates[normalized]["serial_int"] in self.revoked_serials
         return False
 
     def get_integration_status(self) -> Dict[str, Any]:
