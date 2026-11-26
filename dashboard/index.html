@@ -512,8 +512,12 @@
                 </select>
                 <select class="select-filter" id="filter-event-source">
                   <option value="all">All Provenance</option>
-                  <option value="genuine">Genuine / Verified Only</option>
-                  <option value="simulated">Simulated / Synthetic Only</option>
+                  <option value="live_vault">Live Vault API</option>
+                  <option value="opa_cli">Local OPA CLI</option>
+                  <option value="test_harness">Test Harness</option>
+                  <option value="emulation">Cryptographic Emulation</option>
+                  <option value="simulated">Simulated</option>
+                  <option value="unclassified">Unclassified Legacy</option>
                 </select>
                 <input type="text" class="search-input" id="events-search" placeholder="Filter audit events...">
               </div>
