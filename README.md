@@ -1,91 +1,196 @@
-# Post-Quantum Zero-Trust Microsegmentation Mesh (`pqc-zero-trust-mesh`)
+# Post-Quantum Zero-Trust Microsegmentation Mesh
 
-Enterprise-oriented prototype implementing a Post-Quantum Zero-Trust Kubernetes microsegmentation mesh with hybrid ECDH + ML-KEM, mTLS, OPA policy enforcement, secret management, and security observability.
+**A research prototype for identity-aware service communication, hybrid post-quantum key establishment, policy authorization, certificate lifecycle workflows, and security telemetry.**
 
----
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
+[![OPA](https://img.shields.io/badge/Policy-OPA-7D5BA6)](https://www.openpolicyagent.org/)
+[![TLS](https://img.shields.io/badge/Transport-TLS%201.3-2563EB)](https://www.rfc-editor.org/rfc/rfc8446)
+[![Status](https://img.shields.io/badge/Project-Prototype-orange)](#implementation-status-and-evidence)
 
-## Architecture & System Components
+> **Evidence-first status:** This repository contains working prototypes and dated verification artefacts. It is not a production-ready, fully integrated PQC Kubernetes service mesh. The current dashboard verification reports Vault in standalone cryptographic emulation mode; current live Vault health was not available on 26 November 2026. See [limitations](#known-limitations) and the [final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md).
 
-1. **OPA Policy Enforcement**: [`opa/README.md`](opa/README.md) - Decentralized authorization policies (`authorization.rego`, `authz.rego`), unit tests, test inputs, and security dashboard telemetry events. Integrated directly into the service request path via Envoy `ext_authz`.
-2. **Vault Secret Management & PKI Key Rotation**: [`vault/README.md`](vault/README.md) - HashiCorp Vault server dev configuration, least-privilege mesh secrets and PKI access policies (`mesh-secrets.hcl`, `mesh-pki.hcl`), centralized Root CA, dynamic SDS workload leaf certificate issuance, automated renewal at 66% TTL, and CRL emergency revocation.
-3. **Observability & Security Dashboard**: [`dashboard/`](dashboard/) - Real-time zero-trust visual telemetry dashboard monitoring OPA ext_authz decisions, live SVG mesh topology with packet flow animation, Vault certificate rotation versions, and interactive traffic simulation. Run with `python dashboard/server.py 8050` or `./dashboard/run_dashboard.ps1`.
-4. **Automated Test Suites**:
-   - OPA Policy Tests: [	ests/test_opa.ps1](tests/test_opa.ps1) & [	ests/test_opa.sh](tests/test_opa.sh) (28/28 PASS: 18 unit + 10 eval tests).
-   - Live Service Path Authorization Suite: [	ests/test_service_path.py](tests/test_service_path.py) & [	ests/test_service_path.ps1](tests/test_service_path.ps1) (15/15 PASS).
-   - Vault PKI Setup, API & Rotation Suite: [	ests/test_vault_pki.py](tests/test_vault_pki.py) & [	ests/test_vault_pki.ps1](tests/test_vault_pki.ps1) (14/14 PASS).
-   - Total Verification: **57/57 Tests Passing (100%)**.
-   - Integration Reports: [docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md](docs/VAULT_PKI_AND_OPA_INTEGRATION_STATUS_MONTH2_DAY1.md), [docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md](docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md), [	ests/results-service-authz.md](tests/results-service-authz.md), [	ests/results-vault-pki.md](tests/results-vault-pki.md).
-5. **CA, Service Identity, Envoy & mTLS Module**: [`pki/`](pki/), [`envoy/`](envoy/), [`scripts/`](scripts/) - Local test CA, SPIFFE service identities, Envoy sidecar configurations, and mTLS verification suite.
+## At a glance
 
+| Area | What is present | Evidence boundary |
+|---|---|---|
+| Zero-trust policy | Rego policies for frontend → backend → database authorization | Historical OPA unit/contract and service-path reports; rerun before claiming current pass |
+| Workload identity and mTLS | SPIFFE-style URI SANs, TLS 1.3 Envoy configuration, local test CA scripts | Dated Envoy/mTLS evidence; some earlier tests used a TLS stand-in |
+| Hybrid PQC | Python X25519 + ML-KEM-768 key-establishment prototype | Five recorded unit tests; dated packet captures show X25519MLKEM768 for specific tested handshakes |
+| Certificate lifecycle | Vault API client/dual-mode PKI engine and emulation fallback | Current dashboard showed emulation mode; live Vault was not healthy during 26 Nov check |
+| Kubernetes microsegmentation | Architecture and dated Minikube/NetworkPolicy demo artefacts | Not a currently reproducible clean-clone deployment; inspect dated evidence |
+| Observability | Local dashboard with status, authorization and telemetry endpoints | Current local dashboard status checked 26 Nov 2026; telemetry includes historical and simulated events |
 
----
+## Dashboard preview
 
-## CA, Service Identity, Envoy & mTLS Module Details
+The dashboard screenshots below are embedded directly in this README so visitors can see them on the repository landing page without opening the `docs/screenshots/` directory.
 
-Part of the *Post-Quantum Zero-Trust Microsegmentation Mesh*. Owner role: CA / Service Identity / Envoy / mTLS.
+### 1. Dashboard overview
+![Dashboard overview](docs/screenshots/01-dashboard-overview.png)
 
-> **Read first — status and limits**
-> * No `CLAUDE.md`, project spec or architecture document was available when this was built. Requirements come from the
->   task brief only; service names, ports, trust domain and namespace below are **assumptions** to reconcile with the official spec.
-> * **Classical mTLS only.** ECDSA P-256 certificates + TLS 1.3 with X25519 key exchange. **This is not post-quantum secure.**
->   No PQC/hybrid key establishment was implemented or tested. See `docs/INTEGRATION.md`.
-> * Envoy and Docker were **not available** in the authoring environment, so `envoy/*.yaml` and `docker-compose.yml` are
->   written but **unexecuted and unvalidated** (YAML syntax checked only). The mTLS behaviour was proven with `openssl s_server`
->   as a stand-in enforcing the same policy (TLS 1.3, client cert required). SAN allow-listing in Envoy is therefore untested.
+### 2. Mesh topology
+![Mesh topology](docs/screenshots/02-mesh-topology.png)
 
-### Architecture / request flow
+### 3. OPA authorization
+![OPA authorization](docs/screenshots/03-opa-authorization.png)
+
+### 4. Security telemetry
+![Security telemetry](docs/screenshots/04-security-telemetry.png)
+
+### 5. Vault PKI status
+![Vault PKI status](docs/screenshots/05-vault-pki.png)
+
+[Open the complete screenshot directory](docs/screenshots/).
+
+## Architecture
+
+The intended workload path is:
+
+```text
+Frontend workload
+    |
+    | workload identity + TLS 1.3 mTLS
+    v
+Frontend Envoy
+    |
+    | authenticated service request
+    v
+Backend Envoy -----> OPA authorization decision
+    |                    |
+    | ALLOW               | DENY
+    v                    v
+Backend application   HTTP 403 / reject
+    |
+    | authorized backend-only access
+    v
+Database service
 ```
-client -> [frontend-envoy :8080 plain HTTP] ==mTLS (TLS1.3)==> [backend-envoy :8443] -> backend-app :8080 (plain, private net)
-            presents frontend cert                              requires client cert from mesh CA
-            checks backend chain + SAN spiffe://.../sa/backend  allows only SAN spiffe://.../sa/frontend
-```
 
-### Trust model & identities
-| Item | Value |
-|---|---|
-| Root CA | `CN=PQZT Local Test Root CA`, ECDSA P-256, 10 y, `CA:TRUE, pathlen:0`, keyCertSign/cRLSign. **Test CA only** — not for production. |
-| frontend | SAN `URI:spiffe://pqzt.local/ns/demo/sa/frontend`, `DNS:frontend`, `DNS:frontend.demo.svc.cluster.local`; EKU **clientAuth** only; 90 d |
-| backend | SAN `URI:spiffe://pqzt.local/ns/demo/sa/backend`, `DNS:backend`, `DNS:backend.demo.svc.cluster.local`; EKU **serverAuth** only; 90 d |
-Identity = URI SAN (SPIFFE-style). Separate EKUs mean a stolen server cert cannot be used as a client cert (tested).
-The CA key (`pki/out/ca/ca.key`) is never mounted into any service. Service dirs contain only their own key + the CA cert.
-No revocation (CRL/OCSP) is implemented; rely on short lifetimes.
+Kubernetes NetworkPolicies are intended to provide network-level segmentation around this application-level identity and authorization model. The above is the design/request path; not every component is currently deployed together in one reproducible Kubernetes environment.
 
-### Commands
+## Main components
+
+- **OPA:** Rego policies and unit/contract tests in `opa/policies/` and `tests/`.
+- **Envoy and mTLS:** Proxy configurations in `envoy/`; local test CA scripts and extensions in `pki/`.
+- **Hybrid key establishment:** Python prototype in `pqc/hybrid_kem.py`, combining X25519 and ML-KEM-768 secrets through a transcript-bound HKDF-SHA-256 derivation.
+- **Vault PKI:** API client/coordinator, policies and development configuration in `vault/`.
+- **Dashboard:** `dashboard/server.py`, static UI, and telemetry from `opa/telemetry/audit_log.json`.
+- **Kubernetes and integration evidence:** Architecture, integration notes and dated test artefacts under `docs/` and `reports/`.
+
+## Quick start: local dashboard
+
+Tested locally on Kali Linux on 26 November 2026.
+
+Requirements: Python 3 and the dependencies needed by `dashboard/server.py` / `vault/scripts/vault_pki_coordinator.py`.
+
 ```bash
-cd pki-mtls
-bash scripts/gen-ca.sh                 # idempotent; refuses to overwrite existing CA
-bash scripts/issue-cert.sh frontend    # refuses to overwrite existing creds
-bash scripts/issue-cert.sh backend
-bash scripts/verify-pki.sh             # chain, validity, key match, EKU, SAN
-bash tests/run-tests.sh                # 27 checks, writes tests/results.md; exit code = number of FAILs
-# With Docker (UNTESTED here):
-export LOCAL_UID=$(id -u) LOCAL_GID=$(id -g)
-docker compose config -q && docker compose up -d
-curl -s http://127.0.0.1:8080/                       # expect {"service":"backend","status":"ok"}
-openssl s_client -connect 127.0.0.1:8443 </dev/null  # no client cert => must be rejected
-# Envoy validation (UNTESTED here): docker run --rm -v $PWD/envoy:/c envoyproxy/envoy:v1.31.0 --mode validate -c /c/backend-envoy.yaml
+git clone https://github.com/kondlekarshravan216-crypto/pqc-zero-trust-mesh.git
+cd pqc-zero-trust-mesh
+
+# Optional: create an isolated Python environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install runtime libraries used by the dashboard and Vault coordinator
+python3 -m pip install cryptography requests
+
+# Start the dashboard
+bash dashboard/run_dashboard.sh
 ```
-Rotate: delete the specific service dir yourself, re-run `issue-cert.sh <name>`, restart Envoy (static files; no SDS).
 
-### Test results (actually executed; details in `tests/results.md`)
-27 checks: **24 PASS, 0 FAIL, 2 NOT RUN, 1 INFO**; three consecutive runs identical.
-Verified: chain, key/cert match, SAN/EKU, expiry; successful mTLS (HTTP 200); rejections for no client cert (`certificate required`),
-rogue-CA client with correct SAN (`unknown ca`), expired client cert, wrong-EKU client cert (`unsupported certificate`),
-client not trusting server, hostname mismatch, rogue-CA server cert, expired server cert, TLS 1.2 downgrade (`protocol version` alert).
-Negotiated (actual): **TLSv1.3, TLS_AES_256_GCM_SHA384, X25519, ECDSA signature**.
-**NOT RUN:** `envoy --mode validate`; Docker Compose/live Envoy end-to-end (tools absent).
-**Not testable with the stand-in:** Envoy `match_typed_subject_alt_names` (rejecting a valid-CA cert with a *different* identity).
+Open: **http://127.0.0.1:8050**
 
-### Troubleshooting
-* `certificate required` / `unknown ca` → client cert missing or not signed by mesh CA. `unsupported certificate` → wrong EKU.
-* Envoy `permission denied` on key → set `LOCAL_UID/LOCAL_GID`; keys are 0600.
-* `UPSTREAM_TRANSPORT_FAILURE_REASON` in the frontend access log shows upstream TLS failures; backend log shows `peer_uri_san`.
-* Envoy does not check hostnames by itself; identity is enforced only by the `match_typed_subject_alt_names` entries.
+In a second terminal, inspect the read-only status endpoint:
 
-### Security considerations
-Test CA key unprotected on disk; no HSM/passphrase. No revocation. Demo keys are 0600 and git-ignored (`pki/out/`).
-Backend app traffic behind Envoy is plaintext on the private network. Admin interfaces bind to 127.0.0.1.
+```bash
+curl -sS http://127.0.0.1:8050/api/status
+curl -sS http://127.0.0.1:8050/api/events
+```
 
-### Delivery and validation note
-This package combines the original module archive with the later hardened PKI scripts and test utilities. The official project specification was not included in the supplied archives, so service identities, namespace, trust domain, ports, and deployment topology remain provisional. The saved test reports describe earlier sandbox runs; they are not proof that Envoy or Docker integration has run on your machine. Review the configuration against the official specification before generating certificates or deploying.
+The dashboard can use the installed OPA CLI for `/api/evaluate-opa`; if that subprocess path is unavailable, the server has a Python fallback evaluator. Check the returned `evaluator` field before describing a result as an OPA CLI evaluation.
 
+## Full-stack prerequisites
+
+The Compose file defines backend application, frontend/backend Envoy, and OPA services. It expects certificate files in a directory configured through `CERT_DIR` in a local, untracked `.env` file. A sample environment file is provided as `.env.example`.
+
+Before attempting the full stack:
+
+1. Install Docker Engine and the Compose plugin.
+2. Generate or obtain the expected test certificates and confirm filenames match the Compose mounts.
+3. Set `CERT_DIR` to the absolute certificate directory in your local `.env`.
+4. Validate the configuration with `docker compose config`.
+5. Start services only after reviewing the local certificate and Vault configuration.
+
+Do not commit private keys, real tokens, Vault unseal material or populated `.env` files. The repository's local development Vault configuration is not a production deployment profile.
+
+## Implementation status and evidence
+
+### Historical automated verification
+
+The dated [OPA/Vault/Dashboard verification report from 5 November 2026](reports/opa-vault-dashboard-verification-20261105.md) records **61/61 checks passed** across the suites listed in that report. Those results are historical and are not a fresh test run on 26 November.
+
+Other dated artefacts include:
+
+- [Hybrid PQC integration validation](reports/pqc-evidence/validation-report.md)
+- [Captured hybrid key-share summary](reports/pqc-evidence/hybrid-keyshare.txt)
+- [Envoy/mTLS validation log](reports/live-envoy-mtls-validation.txt)
+- [Kubernetes microsegmentation demo log](reports/live-kubernetes-demo-20261030.txt)
+- [OPA and secret-management verification](docs/AUTHORIZATION_AND_SECRET_MANAGEMENT_VERIFICATION.md)
+
+### Current dashboard check — 26 November 2026
+
+The local `/api/status` response reported:
+
+- Dashboard: `healthy`
+- OPA CLI installed: `true` (installation check only)
+- Telemetry events: 150 total — 97 genuine-tagged and 53 simulated-tagged
+- Vault engine: `STANDALONE_CRYPTOGRAPHIC_EMULATION`
+- Live Vault health: `false`
+
+The stored telemetry contains historic records and simulated events. Event counts are not a real-time threat rate or proof of newly generated live traffic.
+
+## Cryptographic scope: important distinction
+
+- The Python prototype combines X25519 and ML-KEM-768 and derives a 32-byte key using HKDF-SHA-256.
+- Dated packet-capture reports record the hybrid TLS 1.3 group `X25519MLKEM768` in specific test handshakes. This does not prove every service connection or every deployment negotiates that group.
+- The current mTLS certificate profiles use ECDSA P-256. **ML-DSA certificate signatures are not implemented/verified in the current mTLS certificate chain.**
+- A dashboard label or algorithm name alone is not cryptographic handshake evidence. Use the packet capture and exact test context when making a PQC claim.
+
+## Known limitations
+
+1. **Vault:** The 26 November dashboard check used standalone cryptographic emulation; live Vault health was false at that time.
+2. **OPA path:** Dashboard status confirms the OPA executable is installed, not that the live Envoy `ext_authz` request path is currently healthy. The evaluator can fall back to a Python implementation; inspect its `evaluator` field.
+3. **PQC:** Hybrid key-establishment prototype and specific TLS handshake artefacts exist, but end-to-end hybrid negotiation is not established for every path. ML-DSA signatures on workload certificates remain unimplemented.
+4. **Kubernetes:** Dated Minikube/NetworkPolicy results are historical evidence; they are not a repeatable current cluster deployment.
+5. **Production hardening:** Local dev Vault settings, test CA material and static certificate delivery require hardening before any production use.
+
+## Project documentation
+
+| Resource | Description |
+|---|---|
+| [Final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md) | Current submission summary, dashboard evidence and limitations |
+| [Architecture v1](docs/architecture/architecture-v1.md) | High-level architecture and intended request flow |
+| [OPA integration contract](docs/architecture/opa-integration-contract.md) | Authorization contract |
+| [Integration notes](docs/INTEGRATION.md) | Cross-component status and evidence boundaries |
+| [Vault documentation](vault/README.md) | Vault policies, dev configuration and PKI workflow |
+| [OPA documentation](opa/README.md) | Rego policies and tests |
+| [Team status](TEAM_STATUS.md) | Team workstream and pending items |
+
+## Repository layout
+
+```text
+.
+├── backend/          # Demo backend service
+├── dashboard/        # Local security observability dashboard
+├── docs/             # Architecture, integration and screenshots
+├── envoy/            # Envoy proxy configurations
+├── opa/              # Rego policies and telemetry data
+├── pki/              # Local test CA extensions and scripts
+├── pqc/              # Hybrid key-establishment prototype
+├── reports/          # Dated validation and submission reports
+├── tests/            # Policy, service-path, PKI and PQC tests
+└── vault/            # Vault development configuration and PKI tooling
+```
+
+## Disclaimer
+
+This is an academic/research prototype for controlled testing. It has not been independently security-audited and must not be deployed as a production service mesh without threat modelling, key-management hardening, reproducible integration tests, monitoring, and operational review.
