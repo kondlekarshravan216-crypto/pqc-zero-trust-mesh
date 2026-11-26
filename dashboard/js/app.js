@@ -431,7 +431,7 @@ function setupSimulationControls() {
         reason: 'Access granted: approved frontend identity'
       };
       pushEvent(fallbackEvent);
-      showToast('Authorized Request Sent', 'OPA ext_authz evaluated: ALLOW (200 OK)', 'success');
+      showToast('Simulated ALLOW', 'Dashboard API was unavailable; this is a local simulated event, not an OPA decision.', 'warning');
     });
   });
 
@@ -451,7 +451,7 @@ function setupSimulationControls() {
     .then(r => r.json())
     .then(data => {
       loadTelemetryData(false);
-      showToast('Lateral Movement Blocked', `Genuine OPA Decision: DENY (${data.reason}) [${data.eval_duration_ms}ms]`, 'danger');
+      showToast('Policy Evaluation: DENY', `${data.evaluator || 'Policy evaluator'} returned DENY. This is not an Envoy end-to-end test.`, 'danger');
     })
     .catch(() => {
       const fallbackEvent = {
@@ -468,7 +468,7 @@ function setupSimulationControls() {
         reason: 'Access denied: lateral movement to database prevented'
       };
       pushEvent(fallbackEvent);
-      showToast('Lateral Movement Blocked', 'Access denied to microsegmented database (403 Forbidden)', 'danger');
+      showToast('Simulated DENY', 'Dashboard API was unavailable; this local event does not verify the live authorization path.', 'warning');
     });
   });
 
@@ -488,7 +488,7 @@ function setupSimulationControls() {
     .then(r => r.json())
     .then(data => {
       loadTelemetryData(false);
-      showToast('Rogue SVID Rejected', `Genuine OPA Decision: DENY (${data.reason}) [${data.eval_duration_ms}ms]`, 'danger');
+      showToast('Policy Evaluation: DENY', `${data.evaluator || 'Policy evaluator'} returned DENY. This is not an Envoy end-to-end test.`, 'danger');
     })
     .catch(() => {
       const fallbackEvent = {
@@ -505,7 +505,7 @@ function setupSimulationControls() {
         reason: 'Access denied: unapproved identity or unauthorized destination'
       };
       pushEvent(fallbackEvent);
-      showToast('Rogue SVID Rejected', 'OPA blocked unapproved workload identity (403 Forbidden)', 'danger');
+      showToast('Simulated DENY', 'Dashboard API was unavailable; this local event does not verify the live authorization path.', 'warning');
     });
   });
 
@@ -665,7 +665,7 @@ async function runSuite(suiteName) {
       const res = await resp.json();
       outputEl.textContent = res.output;
       if (res.exit_code === 0) {
-        showToast('Tests Passed', `${suiteName} suite completed with 100% pass rate`, 'success');
+        showToast('Test process completed', `${suiteName} suite exited successfully (exit code 0). Review the full test output for exact counts.`, 'success');
         loadTelemetryData(false);
       } else {
         showToast('Tests Failed', `${suiteName} suite exited with code ${res.exit_code}`, 'danger');
