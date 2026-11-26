@@ -433,7 +433,7 @@ class VaultPKIEngine:
                     "valid_from": now.isoformat(),
                     "valid_until": (now + dt.timedelta(hours=ttl_hours)).isoformat(),
                     "status": "ACTIVE",
-                    "algorithm": "Hybrid ECDH-P256 + ML-KEM-768",
+                    "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
                     "backend": "LIVE_VAULT_HTTP_API",
                 }
                 self.certificates[serial_hex] = meta
@@ -507,7 +507,7 @@ class VaultPKIEngine:
             "valid_from": now.isoformat(),
             "valid_until": (now + dt.timedelta(hours=ttl_hours)).isoformat(),
             "status": "ACTIVE",
-            "algorithm": "Hybrid ECDH-P256 + ML-KEM-768",
+            "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
             "backend": self.engine_mode,
         }
         self.certificates[serial_hex] = meta
@@ -523,7 +523,7 @@ class VaultPKIEngine:
             "severity": "INFO",
             "serviceIdentity": primary_svid,
             "rotationType": "scheduled_rotation" if version > 1 else "initial_issuance",
-            "algorithm": "Hybrid ECDH-P256 + ML-KEM-768",
+            "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
             "validFrom": meta["valid_from"],
             "validUntil": meta["valid_until"],
             "serialNumber": meta["serial"],
@@ -587,7 +587,7 @@ class VaultPKIEngine:
             "severity": "WARNING",
             "serviceIdentity": cert_meta["uri_sans"][0] if cert_meta["uri_sans"] else cert_meta["common_name"],
             "rotationType": "emergency_revocation",
-            "algorithm": "Hybrid ECDH-P256 + ML-KEM-768",
+            "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
             "validFrom": cert_meta["valid_from"],
             "validUntil": cert_meta["valid_until"],
             "serialNumber": serial_hex,
