@@ -197,7 +197,7 @@ def main():
     print("   PQC Zero-Trust Mesh - Vault PKI Setup & Rotation Test Suite")
     print("=" * 65)
 
-    sandbox = TESTS_DIR / ".work-vault-pki"
+    sandbox = TESTS_DIR / f".work-vault-pki-{os.getpid()}"
     pki = VaultPKIEngine(sandbox)
 
     server = None
@@ -514,6 +514,28 @@ class TestRevocationSafetyUnitTests(unittest.TestCase):
         finally:
             import shutil
             shutil.rmtree(engine_dir, ignore_errors=True)
+
+    def test_emulation_ca_and_certificate_metadata_survive_restart(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory(prefix="pqzt-persistence-test-") as temp_dir:
+            work_dir = Path(temp_dir)
+            first = VaultPKIEngine(work_dir=work_dir, force_mode="simulation")
+            first._record_telemetry = lambda event: None
+            cert_path, key_path, serial = first.issue_certificate(
+                common_name="frontend",
+                uri_sans=["spiffe://pqzt.local/ns/demo/sa/frontend"],
+                is_server=False,
+            )
+            first_ca = first.ca_file.read_bytes()
+            self.assertEqual((work_dir / "emulation-ca.key").stat().st_mode & 0o777, 0o600)
+
+            second = VaultPKIEngine(work_dir=work_dir, force_mode="simulation")
+            second._record_telemetry = lambda event: None
+            self.assertEqual(second.ca_file.read_bytes(), first_ca)
+            self.assertIn(serial, second.certificates)
+            self.assertTrue(second.revoke_certificate(serial))
+            self.assertTrue(second.is_revoked(serial))
 
     def test_live_vault_revoke_failure_is_not_swallowed(self):
         from unittest.mock import Mock
