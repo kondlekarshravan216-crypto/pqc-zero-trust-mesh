@@ -11,31 +11,7 @@ const state = {
   activeTab: 'overview',
   refreshInterval: null,
   certVersionCounter: 2,
-  caSerial: '406c95b2a5e4b6c810d7',
-  activeCertificates: [
-    {
-      service: 'frontend',
-      uri: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-      version: 2,
-      serial: '810445f6d92d4159dc70d74d13ad5aff3bdc6b7',
-      rotationType: 'scheduled_rotation',
-      status: 'ACTIVE',
-      validFrom: new Date(Date.now() - 3600000).toISOString(),
-      validUntil: new Date(Date.now() + 43200000).toISOString(),
-      details: 'Vault PKI issued version 2 certificate for frontend (Envoy SDS)'
-    },
-    {
-      service: 'backend',
-      uri: 'spiffe://pqzt.local/ns/demo/sa/backend',
-      version: 2,
-      serial: '3a7b1d600a9561b49f93b00fae7d6d76782b789d',
-      rotationType: 'scheduled_rotation',
-      status: 'ACTIVE',
-      validFrom: new Date(Date.now() - 3600000).toISOString(),
-      validUntil: new Date(Date.now() + 43200000).toISOString(),
-      details: 'Vault PKI issued version 2 certificate for backend (Hot-swapped)'
-    }
-  ],
+  caSerial: '--',
   selectedEventJson: null
 };
 
@@ -48,11 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFilters();
   setupModals();
   loadTelemetryData();
+  loadComponentStatus();
 
-  // Auto-refresh every 4 seconds
+  // Auto-refresh stored telemetry and component probes every 10 seconds.
   state.refreshInterval = setInterval(() => {
     loadTelemetryData(false);
-  }, 4000);
+    loadComponentStatus();
+  }, 10000);
 });
 
 // ==============================================================================
@@ -126,6 +104,41 @@ async function loadTelemetryData(showNotice = false) {
     }
   } catch (err) {
     console.warn('Telemetry fetch error:', err);
+  }
+}
+
+async function loadComponentStatus() {
+  const setPill = (id, message) => {
+    const pill = document.getElementById(id);
+    const label = pill?.querySelector('.pill-label');
+    if (label) label.textContent = message;
+  };
+
+  try {
+    const response = await fetch('/api/status', { cache: 'no-store' });
+    if (!response.ok) throw new Error('Status endpoint unavailable');
+    const status = await response.json();
+
+    setPill(
+      'mesh-health-pill',
+      status.opa_installed
+        ? 'OPA CLI: installed (Envoy request path not checked)'
+        : 'OPA CLI: not installed'
+    );
+    setPill(
+      'vault-pki-pill',
+      status.vault_engine_mode === 'LIVE_VAULT_HTTP_API' && status.live_vault_healthy
+        ? 'Vault: live API reachable'
+        : 'Vault: standalone emulation / live API unavailable'
+    );
+    setPill(
+      'telemetry-provenance-pill',
+      `Stored events: ${status.total_events || 0}; ${status.genuine_events || 0} marked genuine`
+    );
+  } catch (error) {
+    setPill('mesh-health-pill', 'OPA status: unavailable');
+    setPill('vault-pki-pill', 'Vault status: unavailable');
+    setPill('telemetry-provenance-pill', 'Telemetry status: unavailable');
   }
 }
 
@@ -274,25 +287,16 @@ function renderCertificatesTable() {
   const certEvents = state.events.filter(e => e.eventType === 'key_certificate_rotation').reverse();
 
   if (certEvents.length === 0) {
-    tbody.innerHTML = state.activeCertificates.map(c => `
-      <tr>
-        <td><strong>${escapeHtml(c.service)}</strong></td>
-        <td class="font-mono text-cyan">${escapeHtml(c.uri)}</td>
-        <td><span class="badge purple">V${c.version}</span></td>
-        <td class="font-mono text-dim">${c.serial.slice(0, 16)}...</td>
-        <td><span class="badge neutral">${c.rotationType}</span></td>
-        <td><span class="badge success">${c.status}</span></td>
-        <td class="font-mono" style="font-size: 11px;">12h Short-Lived</td>
-        <td>${escapeHtml(c.details)}</td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state-loading">No certificate lifecycle records are available. No live certificate state is inferred.</td></tr>';
     return;
   }
 
   tbody.innerHTML = certEvents.map(e => {
     const service = e.serviceIdentity && e.serviceIdentity.includes('backend') ? 'backend' : 'frontend';
     const isRevoked = e.status === 'REVOKED';
-    const statusBadge = isRevoked ? '<span class="badge danger">REVOKED (CRL)</span>' : '<span class="badge success">ACTIVE</span>';
+    const statusBadge = isRevoked
+      ? '<span class="badge danger">RECORDED REVOKED EVENT</span>'
+      : '<span class="badge neutral">RECORDED EVENT (current validity not checked)</span>';
     const ver = e.version ? `V${e.version}` : (isRevoked ? 'V1' : 'V2');
     const serial = e.serialNumber ? `${e.serialNumber.slice(0, 16)}...` : '--';
 
@@ -387,7 +391,7 @@ function setupSimulationControls() {
     .then(r => r.json())
     .then(data => {
       loadTelemetryData(false);
-      showToast('Authorized Request Verified', `Genuine OPA Decision: ALLOW (${data.reason}) [${data.eval_duration_ms}ms]`, 'success');
+      showToast('Authorization Evaluated', `${data.evaluator || 'Policy evaluator'} returned ALLOW. This is not an Envoy end-to-end test.`, 'success');
     })
     .catch(() => {
       const fallbackEvent = {
@@ -493,60 +497,37 @@ function setupSimulationControls() {
     .then(r => r.json())
     .then(data => {
       loadTelemetryData(false);
-      showToast('Certificate Rotated', `Vault PKI issued version ${data.version} certificate (${data.backend})`, 'warning');
+      showToast('Certificate operation completed', `Version ${data.version} via ${data.provenance || data.backend}. Check response mode before treating this as live Vault issuance.`, 'warning');
     })
     .catch(() => {
-      state.certVersionCounter += 1;
-      const v = state.certVersionCounter;
-      const newSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      const fallbackEvent = {
-        timestamp: new Date().toISOString(),
-        eventType: 'key_certificate_rotation',
-        category: 'crypto_lifecycle',
-        severity: 'INFO',
-        serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-        rotationType: 'scheduled_rotation',
-        algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
-        serialNumber: newSerial,
-        version: v,
-        status: 'SUCCESS',
-        isGenuine: false,
-        details: `Vault PKI dynamically rotated certificate to Version ${v} (Envoy SDS Hot-Swap)`
-      };
-      pushEvent(fallbackEvent);
-      showToast('Certificate Rotated', `Vault PKI issued V${v} leaf cert without downtime`, 'warning');
+      showToast('Certificate issuance not confirmed', 'Vault API did not complete the request. No rotation event was fabricated.', 'danger');
     });
   });
 
   // 5. Emergency Certificate Revocation (CRL)
   document.getElementById('btn-sim-revoke')?.addEventListener('click', () => {
+    const serial = window.prompt('Enter the exact certificate serial to revoke. No certificate will be selected automatically:');
+    if (!serial || !serial.trim()) {
+      showToast('Revocation cancelled', 'No certificate serial was supplied.', 'warning');
+      return;
+    }
+
     fetch('/api/vault/revoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body: JSON.stringify({ serial: serial.trim() })
     })
-    .then(r => r.json())
+    .then(async response => {
+      if (!response.ok) throw new Error(`Revocation request failed (HTTP ${response.status})`);
+      return response.json();
+    })
     .then(data => {
       loadTelemetryData(false);
-      showToast('Serial Revoked', `Emergency revocation registered in Vault CRL (${data.serial})`, 'warning');
+      const mode = data.provenance || data.backend || 'unknown backend';
+      showToast('Revocation request completed', `${data.status} for serial ${data.serial} via ${mode}`, 'warning');
     })
-    .catch(() => {
-      const revokedSerial = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      const fallbackEvent = {
-        timestamp: new Date().toISOString(),
-        eventType: 'key_certificate_rotation',
-        category: 'crypto_lifecycle',
-        severity: 'WARNING',
-        serviceIdentity: 'spiffe://pqzt.local/ns/demo/sa/frontend',
-        rotationType: 'emergency_revocation',
-        algorithm: 'Hybrid ECDH-P256 + ML-KEM-768',
-        serialNumber: revokedSerial,
-        status: 'REVOKED',
-        isGenuine: false,
-        details: 'Emergency CRL revocation enforced in Vault (simulated_key_compromise)'
-      };
-      pushEvent(fallbackEvent);
-      showToast('Serial Revoked', 'Emergency revocation registered in Vault CRL', 'warning');
+    .catch(error => {
+      showToast('Revocation not confirmed', error.message || 'The API did not confirm revocation.', 'danger');
     });
   });
 }
