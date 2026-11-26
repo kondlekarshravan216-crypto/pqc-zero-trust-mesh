@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Comprehensive Service Request Path Authorization, Secret Management & Key Rotation Test Suite
+Service Request Authorization, Secret Management & Key-Rotation Test Harness
 Post-Quantum Zero-Trust Microsegmentation Mesh (pqc-zero-trust-mesh)
-Member 5: Manideep (OPA, Vault & Dashboard)
+
+This suite uses an in-process Python TLS server as a transport stand-in and queries the OPA REST API directly. It does NOT launch Envoy or exercise Envoy's gRPC ext_authz filter. Certificate rotation is tested by replacing the Python TLS server context; this is not Envoy SDS.
 
 Verifies:
-1. Live OPA ALLOW/DENY policies integrated directly into the service request path (mTLS + OPA ext_authz).
-2. Authorized vs. Unauthorized request validation (valid SPIFFE ID, unapproved identity, lateral movement, unauthorized methods, missing/untrusted/expired certs).
-3. Vault configuration validation, KV v2 secret retrieval, least-privilege capability enforcement, and versioned rollback.
-4. Dynamic key & certificate rotation behavior (zero-downtime hot-swap simulating Envoy SDS).
+1. OPA ALLOW/DENY policy results over the OPA REST API.
+2. Authorized and unauthorized identity, destination and HTTP-method cases.
+3. Python TLS stand-in acceptance/rejection for valid, untrusted and expired certificates.
+4. Vault configuration/policy checks, KV lifecycle checks and certificate coordinator behavior.
+5. TLS-context replacement using an in-process stand-in rather than a live Envoy SDS control plane.
 """
 
 import sys
