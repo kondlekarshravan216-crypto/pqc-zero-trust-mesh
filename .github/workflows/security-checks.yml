@@ -55,7 +55,7 @@ jobs:
         run: python tests/test_compose_network_isolation.py
 
       - name: PQC and Vault unit tests
-        run: pytest -q tests/pqc/test_hybrid_kem.py tests/test_vault_pki.py
+        run: PYTHONPATH=. pytest -q tests/pqc/test_hybrid_kem.py tests/test_vault_pki.py
 
       - name: Validate Compose interpolation and topology
         run: |
