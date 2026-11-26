@@ -4,10 +4,16 @@ Run from the repository root:
     python3 tests/test_dashboard_api_security.py
 """
 
+import sys
 import threading
 import unittest
+from pathlib import Path
 from http.server import HTTPServer
 from urllib import error, request
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from dashboard.server import DashboardHandler
 
