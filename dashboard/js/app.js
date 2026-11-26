@@ -157,8 +157,8 @@ function updateKPIs() {
   const revocations = rotationEvents.filter(e => e.status === 'REVOKED' || e.rotationType === 'emergency_revocation').length;
 
   // 3. Genuine vs Simulated breakdown
-  const genuineCount = events.filter(e => e.isGenuine === true).length;
-  const genuinePct = events.length > 0 ? Math.round((genuineCount / events.length) * 100) : 100;
+  const liveVaultCount = events.filter(e => getProvenanceClass(e) === 'live_vault').length;
+  const localOpaCount = events.filter(e => getProvenanceClass(e) === 'opa_cli').length;
 
   // Update DOM Elements
   const elTotal = document.getElementById('val-total-requests');
@@ -181,7 +181,7 @@ function updateKPIs() {
   // Update Provenance Pill in header
   const elProvPill = document.getElementById('val-provenance-pill');
   if (elProvPill) {
-    elProvPill.textContent = `Stored events: ${genuinePct}% tagged genuine (${genuineCount}/${events.length})`;
+    elProvPill.textContent = `Component evidence: ${liveVaultCount} live Vault API, ${localOpaCount} local OPA CLI records`;
   }
 
   // Update SDS metrics
@@ -194,6 +194,30 @@ function updateKPIs() {
   if (elCaSerial) elCaSerial.textContent = state.caSerial;
 }
 
+function getProvenanceClass(event) {
+  const provenance = event.provenance || '';
+  if (event.isLiveVault === true || event.vaultBackend === 'LIVE_VAULT_HTTP_API' || provenance === 'live_vault_pki') return 'live_vault';
+  if (event.evaluator === 'opa_cli_v1' || ['local_opa_cli_evaluation', 'live_opa_ext_authz'].includes(event.verificationMode)) return 'opa_cli';
+  if (['live_service_path_mtls', 'python_in_process_tls_test_harness'].includes(provenance)) return 'test_harness';
+  if (event.vaultBackend === 'STANDALONE_CRYPTOGRAPHIC_EMULATION' || provenance === 'standalone_cryptographic_emulation') return 'emulation';
+  if (event.isGenuine === false || event.source === 'manual_simulation') return 'simulated';
+  return 'unclassified';
+}
+
+function provenanceBadge(event) {
+  const labels = {
+    live_vault: ['LIVE VAULT API', 'genuine'],
+    opa_cli: ['LOCAL OPA CLI', 'genuine'],
+    test_harness: ['TEST HARNESS', 'neutral'],
+    emulation: ['CRYPTO EMULATION', 'warning'],
+    simulated: ['SIMULATED', 'simulated'],
+    unclassified: ['UNCLASSIFIED', 'neutral']
+  };
+  const [label, cssClass] = labels[getProvenanceClass(event)];
+  return `<span class="badge ${cssClass}">${label}</span>`;
+}
+
+// ==============================================================================
 // ==============================================================================
 // Mini Stream (Overview Tab)
 // ==============================================================================
@@ -213,7 +237,7 @@ function renderMiniStream() {
     const type = formatEventType(e.eventType);
     const identity = e.sourceIdentity || e.serviceIdentity || e.clientIp || 'Unknown';
     const desc = e.reason || e.details || e.failureReason || 'Action logged';
-    const provBadge = e.isGenuine ? '<span class="badge genuine" style="font-size:9px; padding:1px 4px;">GENUINE</span>' : '<span class="badge simulated" style="font-size:9px; padding:1px 4px;">SIMULATED</span>';
+    const provBadge = provenanceBadge(e);
 
     return `
       <div class="mini-event-card severity-${sev}" onclick="viewEventDetails(${state.events.length - 1 - idx})">
@@ -260,7 +284,7 @@ function renderAuthorizationsTable() {
     const badgeText = isAllow ? 'ALLOW' : 'DENY';
     const action = e.action || 'GET';
     const path = e.path || '/';
-    const provBadge = e.isGenuine ? '<span class="badge genuine">GENUINE</span>' : '<span class="badge simulated">SIMULATED</span>';
+    const provBadge = provenanceBadge(e);
 
     return `
       <tr>
@@ -331,8 +355,7 @@ function renderEventsTable() {
   const filtered = allEvents.filter(e => {
     if (categoryFilter !== 'all' && e.category !== categoryFilter) return false;
     if (severityFilter !== 'all' && e.severity !== severityFilter) return false;
-    if (sourceFilter === 'genuine' && e.isGenuine !== true) return false;
-    if (sourceFilter === 'simulated' && e.isGenuine === true) return false;
+    if (sourceFilter !== 'all' && getProvenanceClass(e) !== sourceFilter) return false;
     if (query) {
       const match = `${e.eventType} ${e.sourceIdentity} ${e.serviceIdentity} ${e.reason} ${e.details}`.toLowerCase();
       if (!match.includes(query)) return false;
@@ -351,7 +374,7 @@ function renderEventsTable() {
     const identity = e.sourceIdentity || e.serviceIdentity || e.clientIp || '--';
     const decision = e.decision !== undefined ? (e.decision ? '<span class="badge success">ALLOW</span>' : '<span class="badge danger">DENY</span>') : (e.status ? `<span class="badge purple">${e.status}</span>` : '--');
     const desc = e.reason || e.details || e.failureReason || '--';
-    const provBadge = e.isGenuine ? '<span class="badge genuine">GENUINE</span>' : '<span class="badge simulated">SIMULATED</span>';
+    const provBadge = provenanceBadge(e);
 
     return `
       <tr>
