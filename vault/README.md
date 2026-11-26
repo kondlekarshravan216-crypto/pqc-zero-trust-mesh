@@ -1,3 +1,5 @@
+> **Current status (26 November 2026):** The coordinator contains a live Vault HTTP API client and a separate cryptographic emulation mode. During the local Dashboard check, live Vault health was false and the selected engine was `STANDALONE_CRYPTOGRAPHIC_EMULATION`. Do not describe emulation tests as live Vault verification. Current Compose certificates are local ECDSA P-256 test certificates; automatic Vault-to-Envoy SDS delivery/rotation is not verified. The development configuration below is for local testing only.
+
 # HashiCorp Vault - Secret Management & PKI Lifecycle Review
 
 This directory contains configuration and access policies for **HashiCorp Vault** within the **Post-Quantum Zero-Trust Kubernetes Microsegmentation Mesh (`pqc-zero-trust-mesh`)**.

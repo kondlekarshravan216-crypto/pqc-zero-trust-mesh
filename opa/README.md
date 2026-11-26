@@ -1,3 +1,5 @@
+> **Current verification note (26 November 2026):** OPA 1.21.4 local verification passed 19/19 Rego unit tests and 10/10 JSON contract evaluations. GitHub Actions run #11 also passed on `main` at commit `b7eb4eb`. Some examples and test counts in the historical notes below describe earlier project stages; use the current policy files and commands below as the source of truth. The Dashboard's local `/api/evaluate-opa` endpoint is not, by itself, proof of a live Envoy `ext_authz` integration.
+
 # Open Policy Agent (OPA) - Zero-Trust Microsegmentation
 
 This module provides fine-grained, decentralized policy enforcement for the **Post-Quantum Zero-Trust Kubernetes Microsegmentation Mesh (`pqc-zero-trust-mesh`)**. It ensures that service-to-service communication strictly enforces zero-trust authorization (deny-by-default) based on cryptographic SPIFFE identities and mesh routing constraints.

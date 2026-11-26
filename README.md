@@ -1,5 +1,7 @@
 # Post-Quantum Zero-Trust Microsegmentation Mesh
 
+[![Security and Integration Checks](https://github.com/kondlekarshravan216-crypto/pqc-zero-trust-mesh/actions/workflows/security-checks.yml/badge.svg?branch=main)](https://github.com/kondlekarshravan216-crypto/pqc-zero-trust-mesh/actions/workflows/security-checks.yml)
+
 **A zero-trust security project integrating workload identity, hybrid post-quantum key establishment, policy authorization, certificate lifecycle workflows, and security telemetry.**
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
@@ -8,6 +10,10 @@
 [![Status](https://img.shields.io/badge/Project-Prototype-orange)](#implementation-status-and-evidence)
 
 > **Evidence-first status:** This repository contains working prototypes and dated verification artefacts. It is not a production-ready, fully integrated PQC Kubernetes service mesh. The current dashboard verification reports Vault in standalone cryptographic emulation mode; current live Vault health was not available on 26 November 2026. See the [implementation evidence](#implementation-status-and-evidence) and [final submission report](reports/FINAL_PROJECT_SUBMISSION_2026-11-26.md).
+
+## Latest CI verification — 26 November 2026
+
+GitHub Actions **Security and Integration Checks #11** passed on branch `main` at commit `b7eb4eb` (24 seconds, as shown by GitHub). The workflow covers Python and shell syntax, OPA unit and contract tests, static Envoy/Compose checks, Dashboard API security, Compose network isolation, PQC/Vault unit tests, and Docker Compose configuration validation. The workflow uses Python 3.12; the focused local checks recorded during final review used Python 3.13.12, OPA 1.21.4 and Docker Compose 2.40.3. [View workflow history](https://github.com/kondlekarshravan216-crypto/pqc-zero-trust-mesh/actions).
 
 ## At a glance
 

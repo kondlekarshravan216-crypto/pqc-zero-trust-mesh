@@ -129,3 +129,10 @@ The report distinguishes historical test artefacts from the dashboard snapshot c
 The project integrates post-quantum cryptographic design, zero-trust authorization, workload identity, certificate lifecycle management, microsegmentation, and security observability.
 
 Historical test reports document successful verification of OPA, service-path, Vault PKI, and dashboard components. The final dashboard check confirms that the dashboard is operational and stored telemetry is accessible, while identifying the current Vault emulation limitation.
+
+
+## CI verification update — 26 November 2026
+
+GitHub Actions **Security and Integration Checks #11** passed on `main` at commit `b7eb4eb` (24 seconds in the GitHub Actions list). The workflow runs Python 3.12 and includes syntax, OPA unit/contract, static Envoy/Compose, Dashboard API security, Compose network-isolation, PQC/Vault unit and Docker Compose configuration checks.
+
+Focused local checks were also run in a Python 3.13.12 virtual environment with OPA 1.21.4 and Docker Compose 2.40.3: PQC + Vault 9/9; OPA Rego 19/19; OPA contract evaluations 10/10; Dashboard API security 6/6; Compose network isolation 6/6; static Envoy/Compose checks passed; Python/shell syntax passed; and `docker compose config --quiet` completed without errors. These are component/CI checks, not proof of a full live Kubernetes deployment. The local Vault check reported live health false and standalone cryptographic emulation mode.

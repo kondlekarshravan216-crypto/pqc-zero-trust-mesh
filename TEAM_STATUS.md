@@ -1,3 +1,24 @@
+## Submission verification snapshot — 26 November 2026
+
+- [x] Latest GitHub Actions workflow **Security and Integration Checks #11** passed on `main`, commit `b7eb4eb`.
+- [x] Local PQC + Vault focused tests: 9/9 passed (Python 3.13.12).
+- [x] Local OPA Rego tests: 19/19 passed; OPA contract runner: 10/10 evaluation cases passed.
+- [x] Local Dashboard API security tests: 6/6 passed.
+- [x] Local Compose network isolation tests: 6/6 passed.
+- [x] Static Envoy/Compose checks, Python syntax, shell syntax and Docker Compose configuration validation passed.
+
+These results verify the stated CI and component-test scope. They do not prove that every component is deployed together as a production-ready Kubernetes service mesh.
+
+## Remaining integration limitations
+
+- Live Vault health was false in the 26 November dashboard check; the selected engine mode was standalone cryptographic emulation.
+- A reproducible full Kubernetes deployment and live NetworkPolicy end-to-end test remain open.
+- The exact frontend-Envoy → backend-Envoy hybrid TLS handshake must be captured before claiming universal hybrid negotiation.
+- Current workload certificates use ECDSA P-256; ML-DSA certificate signatures are not implemented.
+- Live Envoy SDS certificate delivery/rotation remains unverified.
+
+---
+
 # Team Status — Current Progress (Month 2 Day 1)
 
 ## Project
