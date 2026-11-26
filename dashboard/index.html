@@ -67,8 +67,8 @@
         <div class="pqc-status-badge">
           <span class="pqc-indicator"></span>
           <div class="pqc-info">
-            <span class="pqc-title">PQC Security Active</span>
-            <span class="pqc-cipher">ECDH + ML-KEM-768</span>
+            <span class="pqc-title">Hybrid KEM Prototype</span>
+            <span class="pqc-cipher">X25519 + ML-KEM-768 (test)</span>
           </div>
         </div>
       </div>
@@ -80,23 +80,23 @@
       <header class="top-header">
         <div class="header-left">
           <h1 class="header-title">Zero-Trust Security Mesh Observability</h1>
-          <p class="header-subtitle">Real-time telemetry from OPA policy decisions, Envoy mTLS ext_authz, and HashiCorp Vault dynamic key rotation</p>
+          <p class="header-subtitle">Dashboard view of stored security events, local authorization checks, and certificate lifecycle records</p>
         </div>
 
         <div class="header-right">
           <div class="status-pill active-pill" id="mesh-health-pill">
             <span class="pulse-dot green"></span>
-            <span class="pill-label">Mesh: 100% Policy Enforced</span>
+            <span class="pill-label">OPA CLI: checking (request path not checked)</span>
           </div>
           
           <div class="status-pill" id="vault-pki-pill">
             <span class="pulse-dot cyan"></span>
-            <span class="pill-label">Vault PKI: Active (pki_mesh)</span>
+            <span class="pill-label">Vault: checking runtime mode</span>
           </div>
 
           <div class="status-pill" id="telemetry-provenance-pill">
             <span class="pulse-dot emerald"></span>
-            <span class="pill-label" id="val-provenance-pill">Telemetry: 100% Genuine</span>
+            <span class="pill-label" id="val-provenance-pill">Stored telemetry: loading provenance labels</span>
           </div>
 
           <button class="btn btn-outline" id="btn-refresh" title="Reload audit telemetry">
@@ -126,12 +126,12 @@
             </svg>
           </div>
           <div class="kpi-body">
-            <span class="kpi-label">Evaluated Requests</span>
+            <span class="kpi-label">Recorded Authorization Events</span>
             <div class="kpi-value-row">
               <span class="kpi-value" id="val-total-requests">--</span>
               <span class="kpi-badge neutral" id="badge-total-requests">100% Monitored</span>
             </div>
-            <span class="kpi-caption">End-to-end request path traffic</span>
+            <span class="kpi-caption">Stored decisions; inspect event timestamp and provenance</span>
           </div>
         </div>
 
@@ -148,7 +148,7 @@
               <span class="kpi-value text-emerald" id="val-allowed-requests">--</span>
               <span class="kpi-badge emerald" id="badge-allowed-pct">--%</span>
             </div>
-            <span class="kpi-caption">Verified frontend SPIFFE SVIDs</span>
+            <span class="kpi-caption">Recorded authorization allow decisions</span>
           </div>
         </div>
 
@@ -164,7 +164,7 @@
             <span class="kpi-label">Blocked (DENY)</span>
             <div class="kpi-value-row">
               <span class="kpi-value text-rose" id="val-denied-requests">--</span>
-              <span class="kpi-badge rose" id="badge-denied-pct">Zero Breach</span>
+              <span class="kpi-badge rose" id="badge-denied-pct">Recorded denials</span>
             </div>
             <span class="kpi-caption">Lateral movement & rogue SVIDs</span>
           </div>
@@ -177,10 +177,10 @@
             </svg>
           </div>
           <div class="kpi-body">
-            <span class="kpi-label">Vault PKI Rotations</span>
+            <span class="kpi-label">Recorded Certificate Events</span>
             <div class="kpi-value-row">
               <span class="kpi-value text-purple" id="val-rotations">--</span>
-              <span class="kpi-badge purple" id="badge-rotations">Hot Reload</span>
+              <span class="kpi-badge purple" id="badge-rotations">Recorded lifecycle events</span>
             </div>
             <span class="kpi-caption">Zero-downtime Envoy SDS updates</span>
           </div>
@@ -198,7 +198,7 @@
             <span class="kpi-label">CRL Revocations</span>
             <div class="kpi-value-row">
               <span class="kpi-value text-amber" id="val-revocations">--</span>
-              <span class="kpi-badge amber" id="badge-revocations">CRL Active</span>
+              <span class="kpi-badge amber" id="badge-revocations">Recorded revocations</span>
             </div>
             <span class="kpi-caption">Compromised serials isolated</span>
           </div>
@@ -214,8 +214,8 @@
             <div class="card topology-card">
               <div class="card-header">
                 <div>
-                  <h2 class="card-title">Live Zero-Trust Mesh Topology</h2>
-                  <p class="card-subtitle">Request path authorization & microsegmentation perimeter</p>
+                  <h2 class="card-title">Mesh Topology (Architecture View)</h2>
+                  <p class="card-subtitle">Illustrative service flow; not a live cluster network map</p>
                 </div>
                 <div class="mesh-legend">
                   <span class="legend-item"><span class="legend-dot green"></span> Allowed Path</span>
