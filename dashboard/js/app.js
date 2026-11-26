@@ -181,7 +181,7 @@ function updateKPIs() {
   // Update Provenance Pill in header
   const elProvPill = document.getElementById('val-provenance-pill');
   if (elProvPill) {
-    elProvPill.textContent = `Telemetry: ${genuinePct}% Genuine (${genuineCount}/${events.length})`;
+    elProvPill.textContent = `Stored events: ${genuinePct}% tagged genuine (${genuineCount}/${events.length})`;
   }
 
   // Update SDS metrics
