@@ -26,6 +26,7 @@ import threading
 import urllib.request
 import urllib.error
 import datetime as dt
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -395,11 +396,17 @@ class VaultPKIEngine:
         """
         if role not in self.roles:
             raise ValueError(f"Unknown PKI role: {role}")
+        if not isinstance(common_name, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", common_name):
+            raise ValueError("common_name must be a lowercase service name (letters, digits, hyphens)")
+        if not isinstance(version, int) or version < 1:
+            raise ValueError("certificate version must be a positive integer")
 
         cert_filename = f"{common_name}-v{version}.crt"
         key_filename = f"{common_name}-v{version}.key"
         cert_file = self.work_dir / cert_filename
         key_file = self.work_dir / key_filename
+        if cert_file.exists() or cert_file.is_symlink() or key_file.exists() or key_file.is_symlink():
+            raise FileExistsError(f"Refusing to overwrite existing certificate/key for {common_name} version {version}")
         now = dt.datetime.now(dt.timezone.utc)
 
         # 1. Attempt Live Vault API Issuance
@@ -546,8 +553,15 @@ class VaultPKIEngine:
         Executes automated renewal at 66% TTL threshold:
         Generates new keypair and leaf cert (version N+1).
         """
+        if not isinstance(common_name, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", common_name):
+            raise ValueError("common_name must be a lowercase service name (letters, digits, hyphens)")
         existing = [c for c in self.certificates.values() if c["common_name"] == common_name]
-        next_version = len(existing) + 1
+        disk_versions = []
+        for cert_path in self.work_dir.glob(f"{common_name}-v*.crt"):
+            match = re.fullmatch(rf"{re.escape(common_name)}-v([1-9][0-9]*)\.crt", cert_path.name)
+            if match:
+                disk_versions.append(int(match.group(1)))
+        next_version = max([c["version"] for c in existing] + disk_versions + [0]) + 1
         last_meta = existing[-1] if existing else None
 
         uri_sans = last_meta["uri_sans"] if last_meta else [f"spiffe://pqzt.local/ns/demo/sa/{common_name}"]
@@ -589,8 +603,8 @@ class VaultPKIEngine:
                 "severity": "WARNING",
                 "serviceIdentity": (
                     cert_meta["uri_sans"][0] if cert_meta and cert_meta["uri_sans"]
-                    else (cert_meta["common_name"] if cert_meta else "unknown"),
-                )[0],
+                    else cert_meta["common_name"] if cert_meta else "unknown"
+                ),
                 "rotationType": "emergency_revocation",
                 "algorithm": "ECDSA P-256 / ECDSA-SHA256 (certificate)",
                 "serialNumber": normalized_serial,
