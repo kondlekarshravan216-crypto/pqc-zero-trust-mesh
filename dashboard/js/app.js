@@ -133,7 +133,7 @@ async function loadComponentStatus() {
     );
     setPill(
       'telemetry-provenance-pill',
-      `Stored events: ${status.total_events || 0}; ${status.genuine_events || 0} marked genuine`
+      `Stored: ${status.total_events || 0}; live Vault: ${status.live_vault_events || 0}; local OPA CLI: ${status.local_opa_cli_evaluations || 0}; unclassified: ${status.unclassified_legacy_events || 0}`
     );
   } catch (error) {
     setPill('mesh-health-pill', 'OPA status: unavailable');
