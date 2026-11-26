@@ -65,6 +65,7 @@ static_resources:
             tls_params:
               tls_minimum_protocol_version: TLSv1_3
               tls_maximum_protocol_version: TLSv1_3
+              # Hybrid group is preferred, with classical fallback groups. Confirm negotiation from a capture of this exact upstream connection.
               ecdh_curves:
                 - X25519MLKEM768
                 - X25519
