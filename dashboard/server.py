@@ -21,6 +21,7 @@ import json
 import time
 import subprocess
 import datetime as dt
+import re
 from pathlib import Path
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import urllib.parse
@@ -149,10 +150,40 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        # Mutating endpoints are local-only and must be called by this UI origin
+        # or a trusted local script (which can omit Origin).
+        origin = self.headers.get("Origin")
+        request_host = self.headers.get("Host", "").lower()
+        fetch_site = self.headers.get("Sec-Fetch-Site", "").lower()
+        if fetch_site in {"cross-site", "same-site"}:
+            self.send_error(403, "Cross-origin requests are not allowed")
+            return
+        if origin:
+            parsed_origin = urllib.parse.urlsplit(origin)
+            if (
+                parsed_origin.scheme != "http"
+                or parsed_origin.netloc.lower() != request_host
+                or parsed_origin.hostname not in {"127.0.0.1", "localhost"}
+            ):
+                self.send_error(403, "Origin does not match the local dashboard")
+                return
+
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self.send_error(415, "Content-Type must be application/json")
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self.send_error(400, "Invalid Content-Length")
+            return
+        if content_length < 0 or content_length > 65536:
+            self.send_error(413, "Request body too large")
+            return
+
         url = urllib.parse.urlparse(self.path)
         path = url.path
-
-        content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
         if path == "/api/evaluate-opa":
@@ -216,7 +247,16 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "genuine_rate_pct": round((genuine_count / len(records) * 100), 1) if records else 100.0,
             "vault_engine_mode": vault_status.get("engine_mode", "STANDALONE_CRYPTOGRAPHIC_EMULATION"),
             "live_vault_healthy": vault_status.get("live_vault_healthy", False),
-            "pqc_ciphers": ["Hybrid ECDH-P256 + ML-KEM-768", "ML-DSA-65"]
+            "dashboard_status": "healthy",
+            "opa_request_path_health": "not_checked",
+            "pqc_key_establishment": {
+                "prototype": ["X25519 + ML-KEM-768"],
+                "captured_tls_group": ["X25519MLKEM768"]
+            },
+            "post_quantum_signatures": {
+                "implemented": [],
+                "planned": ["ML-DSA-65"]
+            }
         }
         self.send_json_response(status)
 
@@ -258,10 +298,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "evalDurationMs": eval_res["eval_duration_ms"],
                 "evaluator": evaluator,
                 "isGenuine": is_genuine_opa,
-                "verificationMode": "live_opa_ext_authz" if is_genuine_opa else "python_policy_fallback",
-                "source": "live_request_evaluator" if is_genuine_opa else "python_embedded_fallback",
+                "verificationMode": "local_opa_cli_evaluation" if is_genuine_opa else "python_policy_fallback",
+                "source": "local_opa_cli" if is_genuine_opa else "python_embedded_fallback",
                 "details": (
-                    f"Genuine ext_authz decision: {'ALLOW' if allow else 'DENY'} ({reason})"
+                    f"Local OPA CLI evaluation (not an Envoy ext_authz network-path test): {'ALLOW' if allow else 'DENY'} ({reason})"
                     if is_genuine_opa else
                     f"Python fallback evaluation (OPA CLI unavailable): {'ALLOW' if allow else 'DENY'} ({reason})"
                 )
@@ -272,6 +312,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "decision": allow,
                 "reason": reason,
                 "eval_duration_ms": eval_res["eval_duration_ms"],
+                "evaluator": evaluator,
                 "event": event
             })
         except Exception as e:
@@ -282,19 +323,24 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             common_name = req.get("common_name", "frontend")
-            is_server = bool(req.get("is_server", False))
+            is_server = req.get("is_server", False)
+            if common_name not in {"frontend", "backend"} or not isinstance(is_server, bool):
+                self.send_error(400, "common_name must be frontend/backend and is_server must be boolean")
+                return
             if not PKI_COORDINATOR:
                 self.send_error(503, "Vault engine unavailable")
                 return
 
             cert_f, key_f, serial, version = PKI_COORDINATOR.renew_certificate(common_name, is_server=is_server)
+            live_vault = PKI_COORDINATOR.engine_mode == "LIVE_VAULT_HTTP_API"
             self.send_json_response({
                 "status": "success",
                 "common_name": common_name,
                 "version": version,
                 "serial": serial,
                 "backend": PKI_COORDINATOR.engine_mode,
-                "isGenuine": True
+                "isGenuine": live_vault,
+                "provenance": "live_vault_pki" if live_vault else "standalone_cryptographic_emulation"
             })
         except Exception as e:
             self.send_error(500, f"Vault issuance error: {str(e)}")
@@ -304,19 +350,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         try:
             req = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
             serial = req.get("serial")
-            if not serial and PKI_COORDINATOR and PKI_COORDINATOR.certificates:
-                serial = list(PKI_COORDINATOR.certificates.keys())[0]
-
+            if not isinstance(serial, str) or not re.fullmatch(r"[0-9A-Fa-f:-]{8,128}", serial):
+                self.send_error(400, "A valid certificate serial is required; no default certificate will be selected")
+                return
             if not PKI_COORDINATOR:
                 self.send_error(503, "Vault engine unavailable")
                 return
 
-            revoked = PKI_COORDINATOR.revoke_certificate(serial or "demo-serial", reason="emergency_dashboard_trigger")
+            revoked = PKI_COORDINATOR.revoke_certificate(serial, reason="emergency_dashboard_trigger")
+            live_vault = PKI_COORDINATOR.engine_mode == "LIVE_VAULT_HTTP_API"
             self.send_json_response({
                 "status": "revoked" if revoked else "not_found",
                 "serial": serial,
                 "backend": PKI_COORDINATOR.engine_mode,
-                "isGenuine": True
+                "isGenuine": live_vault,
+                "provenance": "live_vault_pki" if live_vault else "standalone_cryptographic_emulation"
             })
         except Exception as e:
             self.send_error(500, f"Vault revocation error: {str(e)}")
@@ -324,10 +372,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def handle_simulate(self, body_bytes):
         try:
             event = json.loads(body_bytes.decode("utf-8"))
-            if "isGenuine" not in event:
-                event["isGenuine"] = False
-            if "source" not in event:
-                event["source"] = "manual_simulation"
+            # Never trust client-supplied provenance for simulated events.
+            event["isGenuine"] = False
+            event["source"] = "manual_simulation"
+            event["provenance"] = "manual_simulation"
             records = self._append_telemetry(event)
             self.send_json_response({"status": "recorded", "total": len(records)})
         except Exception as e:
@@ -378,7 +426,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.end_headers()
         self.wfile.write(body)
