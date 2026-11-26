@@ -531,7 +531,8 @@ class VaultPKIEngine:
             "status": "SUCCESS",
             "vaultBackend": self.engine_mode,
             "isLiveVault": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
-            "isGenuine": True,
+            "isGenuine": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
+            "provenance": ("live_vault_pki" if self.engine_mode == "LIVE_VAULT_HTTP_API" else "standalone_cryptographic_emulation"),
             "details": f"Vault PKI issued version {version} certificate for {common_name} (backend={self.engine_mode})",
         }
         self.events.append(event)
@@ -593,7 +594,8 @@ class VaultPKIEngine:
             "status": "REVOKED",
             "vaultBackend": self.engine_mode,
             "isLiveVault": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
-            "isGenuine": True,
+            "isGenuine": (self.engine_mode == "LIVE_VAULT_HTTP_API"),
+            "provenance": ("live_vault_pki" if self.engine_mode == "LIVE_VAULT_HTTP_API" else "standalone_cryptographic_emulation"),
             "details": f"Revoked serial {serial_hex} due to {reason} (backend={self.engine_mode})",
         }
         self.events.append(event)
